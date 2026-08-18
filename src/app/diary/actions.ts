@@ -473,6 +473,10 @@ export interface ActionState {
   error: string;
 }
 
+/* ============================================================
+   GET AUTHENTICATED USER
+============================================================ */
+
 async function getAuthenticatedUser() {
   const supabase = await createClient();
 
@@ -490,11 +494,19 @@ async function getAuthenticatedUser() {
   };
 }
 
+/* ============================================================
+   TODAY - INDIA
+============================================================ */
+
 function getTodayIndia() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Kolkata",
   }).format(new Date());
 }
+
+/* ============================================================
+   NORMALIZE FORMDATA
+============================================================ */
 
 function getFormData(
   first: FormData | ActionState,
@@ -513,6 +525,7 @@ function getFormData(
 
 /* ============================================================
    ADD MEAL
+   Used by AddMealModal
 ============================================================ */
 
 export async function addMeal(
@@ -566,6 +579,8 @@ export async function addMeal(
     "dinner",
   ];
 
+  /* ---------------- Validation ---------------- */
+
   if (!validMealTypes.includes(mealType)) {
     return {
       success: false,
@@ -604,24 +619,32 @@ export async function addMeal(
     };
   }
 
+  /* ---------------- Insert ---------------- */
+
   const { error } = await supabase
     .from("meals")
     .insert({
       user_id: user.id,
-      meal_date: getTodayIndia(),
-      meal_type: mealType,
-      name,
-      description: description || null,
 
-      calories: Math.round(calories),
+      meal_date: getTodayIndia(),
+
+      meal_type: mealType,
+
+      name,
+
+      description:
+        description || null,
+
+      calories:
+        Math.round(calories),
+
       protein_g: protein,
+
       carbs_g: carbs,
+
       fat_g: fat,
 
       ai_analyzed: false,
-
-      // IMPORTANT:
-      // image_url intentionally NOT saved.
     });
 
   if (error) {
@@ -648,26 +671,50 @@ export async function addMeal(
 }
 
 /* ============================================================
+   ADD MEAL - NORMAL FORM WRAPPER
+   Used by /diary/add-meal/page.tsx
+============================================================ */
+
+export async function addMealForm(
+  formData: FormData
+): Promise<void> {
+  const result =
+    await addMeal(formData);
+
+  if (!result.success) {
+    throw new Error(
+      result.error ||
+        "Unable to add meal."
+    );
+  }
+}
+
+/* ============================================================
    DELETE MEAL
 ============================================================ */
 
 export async function deleteMeal(
   formData: FormData
-) {
-  const { supabase, user } =
-    await getAuthenticatedUser();
+): Promise<void> {
+  const {
+    supabase,
+    user,
+  } = await getAuthenticatedUser();
 
   const id = String(
     formData.get("id") ?? ""
   );
 
-  if (!id) return;
+  if (!id) {
+    return;
+  }
 
-  const { error } = await supabase
-    .from("meals")
-    .delete()
-    .eq("id", id)
-    .eq("user_id", user.id);
+  const { error } =
+    await supabase
+      .from("meals")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", user.id);
 
   if (error) {
     console.error(
@@ -684,13 +731,17 @@ export async function deleteMeal(
 
 /* ============================================================
    ADD ACTIVITY
+   Used by AddActivityModal
 ============================================================ */
 
 export async function addActivity(
   first: FormData | ActionState,
   second?: FormData
 ): Promise<ActionState> {
-  const formData = getFormData(first, second);
+  const formData = getFormData(
+    first,
+    second
+  );
 
   if (!formData) {
     return {
@@ -699,33 +750,46 @@ export async function addActivity(
     };
   }
 
-  const { supabase, user } =
-    await getAuthenticatedUser();
+  const {
+    supabase,
+    user,
+  } = await getAuthenticatedUser();
 
   const activityType = String(
-    formData.get("activity_type") ?? ""
+    formData.get(
+      "activity_type"
+    ) ?? ""
   ).trim();
 
   const activityName = String(
-    formData.get("activity_name") ?? ""
+    formData.get(
+      "activity_name"
+    ) ?? ""
   ).trim();
 
   const duration = Number(
-    formData.get("duration_minutes") ?? 0
+    formData.get(
+      "duration_minutes"
+    ) ?? 0
   );
 
   const caloriesBurned = Number(
-    formData.get("calories_burned") ?? 0
+    formData.get(
+      "calories_burned"
+    ) ?? 0
   );
 
   const note = String(
     formData.get("note") ?? ""
   ).trim();
 
+  /* ---------------- Validation ---------------- */
+
   if (!activityName) {
     return {
       success: false,
-      error: "Please enter an activity name.",
+      error:
+        "Please enter an activity name.",
     };
   }
 
@@ -741,7 +805,9 @@ export async function addActivity(
   }
 
   if (
-    !Number.isFinite(caloriesBurned) ||
+    !Number.isFinite(
+      caloriesBurned
+    ) ||
     caloriesBurned < 0
   ) {
     return {
@@ -751,28 +817,34 @@ export async function addActivity(
     };
   }
 
-  const { error } = await supabase
-    .from("activities")
-    .insert({
-      user_id: user.id,
+  /* ---------------- Insert ---------------- */
 
-      activity_date:
-        getTodayIndia(),
+  const { error } =
+    await supabase
+      .from("activities")
+      .insert({
+        user_id: user.id,
 
-      activity_type:
-        activityType || "other",
+        activity_date:
+          getTodayIndia(),
 
-      activity_name:
-        activityName,
+        activity_type:
+          activityType || "other",
 
-      duration_minutes:
-        Math.round(duration),
+        activity_name:
+          activityName,
 
-      calories_burned:
-        Math.round(caloriesBurned),
+        duration_minutes:
+          Math.round(duration),
 
-      note: note || null,
-    });
+        calories_burned:
+          Math.round(
+            caloriesBurned
+          ),
+
+        note:
+          note || null,
+      });
 
   if (error) {
     console.error(
@@ -798,26 +870,50 @@ export async function addActivity(
 }
 
 /* ============================================================
+   ADD ACTIVITY - NORMAL FORM WRAPPER
+   Used by /diary/add-activity/page.tsx
+============================================================ */
+
+export async function addActivityForm(
+  formData: FormData
+): Promise<void> {
+  const result =
+    await addActivity(formData);
+
+  if (!result.success) {
+    throw new Error(
+      result.error ||
+        "Unable to add activity."
+    );
+  }
+}
+
+/* ============================================================
    DELETE ACTIVITY
 ============================================================ */
 
 export async function deleteActivity(
   formData: FormData
-) {
-  const { supabase, user } =
-    await getAuthenticatedUser();
+): Promise<void> {
+  const {
+    supabase,
+    user,
+  } = await getAuthenticatedUser();
 
   const id = String(
     formData.get("id") ?? ""
   );
 
-  if (!id) return;
+  if (!id) {
+    return;
+  }
 
-  const { error } = await supabase
-    .from("activities")
-    .delete()
-    .eq("id", id)
-    .eq("user_id", user.id);
+  const { error } =
+    await supabase
+      .from("activities")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", user.id);
 
   if (error) {
     console.error(

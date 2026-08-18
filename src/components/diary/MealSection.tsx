@@ -1,8 +1,6 @@
 "use client";
 
-import {
-  useState,
-} from "react";
+import { useState } from "react";
 
 import {
   Plus,
@@ -31,8 +29,12 @@ interface MealSectionProps {
   meals: DiaryMeal[];
 }
 
+/* ============================================================
+   GET MEAL ICON
+============================================================ */
+
 function getIcon(
-  mealType: string
+  mealType: MealSectionProps["mealType"]
 ) {
   switch (mealType) {
     case "breakfast":
@@ -52,6 +54,10 @@ function getIcon(
   }
 }
 
+/* ============================================================
+   COMPONENT
+============================================================ */
+
 export default function MealSection({
   mealType,
   title,
@@ -64,6 +70,10 @@ export default function MealSection({
 
   const Icon =
     getIcon(mealType);
+
+  /* ==========================================================
+     CALCULATE CALORIES
+  ========================================================== */
 
   const calories =
     meals.reduce(
@@ -78,6 +88,10 @@ export default function MealSection({
   return (
     <>
       <section className="rounded-[20px] bg-white p-4 shadow-[0_4px_20px_rgba(0,0,0,0.04)] sm:p-6">
+
+        {/* ====================================================
+            HEADER
+        ==================================================== */}
 
         <div className="mb-4 flex items-center justify-between">
 
@@ -98,8 +112,13 @@ export default function MealSection({
 
         </div>
 
+        {/* ====================================================
+            MEALS
+        ==================================================== */}
+
         {meals.length > 0 ? (
           <div className="mb-3 space-y-1">
+
             {meals.map(
               (meal) => (
                 <MealItem
@@ -108,6 +127,7 @@ export default function MealSection({
                 />
               )
             )}
+
           </div>
         ) : (
           <div className="mb-3 rounded-xl border border-dashed border-[#bec9c6] px-4 py-6 text-center">
@@ -119,12 +139,16 @@ export default function MealSection({
           </div>
         )}
 
+        {/* ====================================================
+            ADD MEAL BUTTON
+        ==================================================== */}
+
         <button
           type="button"
           onClick={() =>
             setOpen(true)
           }
-          className="flex min-h-[46px] w-full items-center justify-center rounded-xl border border-dashed border-[#bec9c6] text-sm font-semibold text-[#004e47] transition hover:border-[#004e47] hover:bg-[#f3fafa]"
+          className="flex min-h-[46px] w-full cursor-pointer items-center justify-center rounded-xl border border-dashed border-[#bec9c6] text-sm font-semibold text-[#004e47] transition hover:border-[#004e47] hover:bg-[#f3fafa]"
         >
           <Plus
             size={17}
@@ -135,6 +159,10 @@ export default function MealSection({
         </button>
 
       </section>
+
+      {/* ======================================================
+          ADD MEAL MODAL
+      ====================================================== */}
 
       <AddMealModal
         open={open}

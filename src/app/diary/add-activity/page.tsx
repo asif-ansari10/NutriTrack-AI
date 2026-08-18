@@ -177,7 +177,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
-import { addActivity } from "../actions";
+import { addActivityForm } from "../actions";
 
 interface Props {
   searchParams: Promise<{
@@ -185,51 +185,21 @@ interface Props {
   }>;
 }
 
-const ACTIVITY_TYPES = [
-  {
-    value: "gym",
-    label: "Gym",
-  },
-  {
-    value: "walking",
-    label: "Walking",
-  },
-  {
-    value: "running",
-    label: "Running",
-  },
-  {
-    value: "cycling",
-    label: "Cycling",
-  },
-  {
-    value: "sports",
-    label: "Sports",
-  },
-  {
-    value: "strength",
-    label: "Strength Training",
-  },
-  {
-    value: "other",
-    label: "Other",
-  },
-];
-
-function getToday() {
-  return new Date().toISOString().split("T")[0];
-}
-
 export default async function AddActivityPage({
   searchParams,
 }: Props) {
   const params = await searchParams;
 
-  const date = params.date || getToday();
+  const date =
+    params.date ||
+    new Date()
+      .toISOString()
+      .split("T")[0];
 
   return (
-    <main className="min-h-screen bg-[#f8f9fa] px-4 py-6 sm:px-6">
+    <div className="min-h-screen bg-[#f8f9fa] px-4 py-6 sm:px-6">
       <div className="mx-auto w-full max-w-2xl">
+
         {/* Back */}
         <Link
           href={`/diary?date=${date}`}
@@ -240,7 +210,8 @@ export default async function AddActivityPage({
         </Link>
 
         {/* Card */}
-        <section className="rounded-[20px] bg-white p-5 shadow-[0_4px_20px_rgba(0,0,0,0.04)] sm:p-8">
+        <div className="rounded-[20px] bg-white p-5 shadow-[0_4px_20px_rgba(0,0,0,0.04)] sm:p-8">
+
           <h1 className="text-2xl font-bold text-[#191c1d]">
             Add Activity
           </h1>
@@ -250,29 +221,18 @@ export default async function AddActivityPage({
           </p>
 
           <form
-            action={addActivity}
+            action={addActivityForm}
             className="mt-7 space-y-5"
           >
-            {/* Activity date */}
-            <div>
-              <label
-                htmlFor="activity_date"
-                className="mb-2 block text-sm font-medium text-[#191c1d]"
-              >
-                Activity Date
-              </label>
 
-              <input
-                id="activity_date"
-                type="date"
-                name="activity_date"
-                defaultValue={date}
-                required
-                className="h-12 w-full cursor-pointer rounded-xl border border-[#bec9c6] bg-white px-4 outline-none transition focus:border-[#004e47] focus:ring-2 focus:ring-[#004e47]/10"
-              />
-            </div>
+            {/* Activity Date */}
+            <input
+              type="hidden"
+              name="activity_date"
+              value={date}
+            />
 
-            {/* Activity type */}
+            {/* Activity Type */}
             <div>
               <label
                 htmlFor="activity_type"
@@ -286,20 +246,39 @@ export default async function AddActivityPage({
                 name="activity_type"
                 defaultValue="gym"
                 required
-                className="h-12 w-full cursor-pointer rounded-xl border border-[#bec9c6] bg-white px-4 outline-none transition focus:border-[#004e47] focus:ring-2 focus:ring-[#004e47]/10"
+                className="h-12 w-full cursor-pointer rounded-xl border border-[#bec9c6] bg-white px-4 outline-none transition focus:border-[#004e47] focus:ring-1 focus:ring-[#004e47]"
               >
-                {ACTIVITY_TYPES.map((item) => (
-                  <option
-                    key={item.value}
-                    value={item.value}
-                  >
-                    {item.label}
-                  </option>
-                ))}
+                <option value="gym">
+                  Gym
+                </option>
+
+                <option value="walking">
+                  Walking
+                </option>
+
+                <option value="running">
+                  Running
+                </option>
+
+                <option value="cycling">
+                  Cycling
+                </option>
+
+                <option value="sports">
+                  Sports
+                </option>
+
+                <option value="strength">
+                  Strength Training
+                </option>
+
+                <option value="other">
+                  Other
+                </option>
               </select>
             </div>
 
-            {/* Activity name */}
+            {/* Activity Name */}
             <div>
               <label
                 htmlFor="activity_name"
@@ -311,14 +290,17 @@ export default async function AddActivityPage({
               <input
                 id="activity_name"
                 name="activity_name"
+                type="text"
                 required
                 placeholder="Morning Gym"
-                className="h-12 w-full rounded-xl border border-[#bec9c6] bg-white px-4 outline-none transition focus:border-[#004e47] focus:ring-2 focus:ring-[#004e47]/10"
+                className="h-12 w-full rounded-xl border border-[#bec9c6] px-4 outline-none transition placeholder:text-gray-400 focus:border-[#004e47] focus:ring-1 focus:ring-[#004e47]"
               />
             </div>
 
-            {/* Duration + calories */}
+            {/* Duration + Calories */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+
+              {/* Duration */}
               <div>
                 <label
                   htmlFor="duration_minutes"
@@ -331,14 +313,14 @@ export default async function AddActivityPage({
                   id="duration_minutes"
                   type="number"
                   name="duration_minutes"
-                  min="0"
-                  step="1"
+                  min="1"
                   required
                   placeholder="45"
-                  className="h-12 w-full rounded-xl border border-[#bec9c6] bg-white px-4 outline-none transition focus:border-[#004e47] focus:ring-2 focus:ring-[#004e47]/10"
+                  className="h-12 w-full rounded-xl border border-[#bec9c6] px-4 outline-none transition placeholder:text-gray-400 focus:border-[#004e47] focus:ring-1 focus:ring-[#004e47]"
                 />
               </div>
 
+              {/* Calories */}
               <div>
                 <label
                   htmlFor="calories_burned"
@@ -352,12 +334,12 @@ export default async function AddActivityPage({
                   type="number"
                   name="calories_burned"
                   min="0"
-                  step="1"
                   required
                   placeholder="250"
-                  className="h-12 w-full rounded-xl border border-[#bec9c6] bg-white px-4 outline-none transition focus:border-[#004e47] focus:ring-2 focus:ring-[#004e47]/10"
+                  className="h-12 w-full rounded-xl border border-[#bec9c6] px-4 outline-none transition placeholder:text-gray-400 focus:border-[#004e47] focus:ring-1 focus:ring-[#004e47]"
                 />
               </div>
+
             </div>
 
             {/* Note */}
@@ -373,8 +355,8 @@ export default async function AddActivityPage({
                 id="note"
                 name="note"
                 rows={4}
-                placeholder="Optional note about your workout"
-                className="w-full resize-none rounded-xl border border-[#bec9c6] bg-white px-4 py-3 outline-none transition focus:border-[#004e47] focus:ring-2 focus:ring-[#004e47]/10"
+                placeholder="Optional note about your activity..."
+                className="w-full resize-none rounded-xl border border-[#bec9c6] px-4 py-3 outline-none transition placeholder:text-gray-400 focus:border-[#004e47] focus:ring-1 focus:ring-[#004e47]"
               />
             </div>
 
@@ -385,9 +367,10 @@ export default async function AddActivityPage({
             >
               Add Activity
             </button>
+
           </form>
-        </section>
+        </div>
       </div>
-    </main>
+    </div>
   );
 }

@@ -324,16 +324,30 @@ import {
   type FormEvent,
 } from "react";
 
+import {
+  X,
+  Utensils,
+  Loader2,
+} from "lucide-react";
+
 import { addMeal } from "@/app/diary/actions";
+
+type MealType =
+  | "breakfast"
+  | "lunch"
+  | "snack"
+  | "dinner";
 
 interface AddMealModalProps {
   open: boolean;
   onClose: () => void;
+  defaultMealType?: MealType;
 }
 
 export default function AddMealModal({
   open,
   onClose,
+  defaultMealType = "breakfast",
 }: AddMealModalProps) {
   const [loading, setLoading] =
     useState(false);
@@ -355,7 +369,9 @@ export default function AddMealModal({
 
     try {
       const formData =
-        new FormData(event.currentTarget);
+        new FormData(
+          event.currentTarget
+        );
 
       const result =
         await addMeal(formData);
@@ -379,7 +395,9 @@ export default function AddMealModal({
       );
 
       setError(
-        "Something went wrong while adding the meal."
+        err instanceof Error
+          ? err.message
+          : "Something went wrong while adding the meal."
       );
     } finally {
       setLoading(false);
@@ -387,55 +405,81 @@ export default function AddMealModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div
+      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 px-4 py-6 backdrop-blur-sm"
+      onMouseDown={(event) => {
+        if (
+          event.target ===
+          event.currentTarget
+        ) {
+          onClose();
+        }
+      }}
+    >
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl">
 
-      <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl sm:p-7">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-[#e5e9e8] px-5 py-4 sm:px-6">
 
-        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
 
-          <div>
-            <h2 className="text-xl font-bold text-[#191c1d]">
-              Add Meal
-            </h2>
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#dff8f5] text-[#004e47]">
+              <Utensils size={20} />
+            </div>
 
-            <p className="mt-1 text-sm text-gray-500">
-              Add your meal and nutrition details.
-            </p>
+            <div>
+              <h2 className="text-lg font-bold text-[#191c1d]">
+                Add Meal
+              </h2>
+
+              <p className="text-xs text-[#64706d]">
+                Add your meal and nutrition details.
+              </p>
+            </div>
+
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="cursor-pointer text-2xl text-gray-500 hover:text-black"
+            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-[#56615f] transition hover:bg-[#f1f4f3] hover:text-[#191c1d]"
+            aria-label="Close"
           >
-            ×
+            <X size={20} />
           </button>
 
         </div>
 
-        {error && (
-          <div className="mb-5 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
-            {error}
-          </div>
-        )}
-
+        {/* Form */}
         <form
           onSubmit={handleSubmit}
-          className="space-y-5"
+          className="space-y-5 p-5 sm:p-6"
         >
 
-          {/* Meal Type */}
+          {/* Error */}
+          {error && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
 
+          {/* Meal Type */}
           <div>
-            <label className="mb-2 block text-sm font-medium">
+            <label
+              htmlFor="modal-meal-type"
+              className="mb-2 block text-sm font-medium text-[#191c1d]"
+            >
               Meal Type
             </label>
 
             <select
+              id="modal-meal-type"
               name="meal_type"
-              defaultValue="breakfast"
+              defaultValue={
+                defaultMealType
+              }
               required
-              className="h-12 w-full cursor-pointer rounded-xl border border-[#bec9c6] bg-white px-4 outline-none focus:border-[#004e47]"
+              className="h-12 w-full cursor-pointer rounded-xl border border-[#bec9c6] bg-white px-4 outline-none transition focus:border-[#004e47] focus:ring-1 focus:ring-[#004e47]"
             >
               <option value="breakfast">
                 Breakfast
@@ -456,112 +500,162 @@ export default function AddMealModal({
           </div>
 
           {/* Meal Name */}
-
           <div>
-            <label className="mb-2 block text-sm font-medium">
+            <label
+              htmlFor="modal-meal-name"
+              className="mb-2 block text-sm font-medium text-[#191c1d]"
+            >
               Meal Name
             </label>
 
             <input
+              id="modal-meal-name"
               name="name"
+              type="text"
               required
               placeholder="Chicken Biryani"
-              className="h-12 w-full rounded-xl border border-[#bec9c6] px-4 outline-none focus:border-[#004e47]"
+              className="h-12 w-full rounded-xl border border-[#bec9c6] px-4 outline-none transition placeholder:text-gray-400 focus:border-[#004e47] focus:ring-1 focus:ring-[#004e47]"
             />
           </div>
 
           {/* Description */}
-
           <div>
-            <label className="mb-2 block text-sm font-medium">
+            <label
+              htmlFor="modal-meal-description"
+              className="mb-2 block text-sm font-medium text-[#191c1d]"
+            >
               Description
             </label>
 
             <textarea
+              id="modal-meal-description"
               name="description"
               rows={3}
-              placeholder="Optional description"
-              className="w-full rounded-xl border border-[#bec9c6] px-4 py-3 outline-none focus:border-[#004e47]"
+              placeholder="Optional description..."
+              className="w-full resize-none rounded-xl border border-[#bec9c6] px-4 py-3 outline-none transition placeholder:text-gray-400 focus:border-[#004e47] focus:ring-1 focus:ring-[#004e47]"
             />
           </div>
 
           {/* Nutrition */}
-
           <div>
-            <label className="mb-3 block text-sm font-semibold">
+            <label className="mb-3 block text-sm font-medium text-[#191c1d]">
               Nutrition
             </label>
 
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
 
+              {/* Calories */}
               <NutritionInput
                 label="Calories"
                 name="calories"
+                suffix="kcal"
                 step="1"
               />
 
+              {/* Protein */}
               <NutritionInput
-                label="Protein (g)"
+                label="Protein"
                 name="protein_g"
+                suffix="g"
                 step="0.1"
               />
 
+              {/* Carbs */}
               <NutritionInput
-                label="Carbs (g)"
+                label="Carbs"
                 name="carbs_g"
+                suffix="g"
                 step="0.1"
               />
 
+              {/* Fat */}
               <NutritionInput
-                label="Fat (g)"
+                label="Fat"
                 name="fat_g"
+                suffix="g"
                 step="0.1"
               />
 
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="min-h-12 w-full cursor-pointer rounded-xl bg-[#004e47] font-semibold text-white transition hover:bg-[#00685f] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {loading
-              ? "Adding Meal..."
-              : "Add Meal"}
-          </button>
+          {/* Buttons */}
+          <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row">
+
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              className="min-h-12 flex-1 cursor-pointer rounded-xl border border-[#bec9c6] bg-white px-5 font-semibold text-[#34403d] transition hover:bg-[#f5f7f6] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="min-h-12 flex-1 cursor-pointer rounded-xl bg-[#004e47] px-5 font-semibold text-white transition hover:bg-[#00685f] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2
+                    size={18}
+                    className="animate-spin"
+                  />
+                  Adding...
+                </span>
+              ) : (
+                "Add Meal"
+              )}
+            </button>
+
+          </div>
 
         </form>
-
       </div>
-
     </div>
   );
 }
 
+/* ============================================================
+   NUTRITION INPUT
+============================================================ */
+
 function NutritionInput({
   label,
   name,
+  suffix,
   step,
 }: {
   label: string;
   name: string;
+  suffix: string;
   step: string;
 }) {
   return (
     <div>
-      <label className="mb-2 block text-xs font-medium">
+      <label
+        htmlFor={`nutrition-${name}`}
+        className="mb-2 block text-xs font-medium text-[#46514f]"
+      >
         {label}
       </label>
 
-      <input
-        type="number"
-        name={name}
-        min="0"
-        step={step}
-        defaultValue="0"
-        className="h-12 w-full rounded-xl border border-[#bec9c6] px-3 outline-none focus:border-[#004e47]"
-      />
+      <div className="relative">
+        <input
+          id={`nutrition-${name}`}
+          type="number"
+          name={name}
+          min="0"
+          step={step}
+          defaultValue="0"
+          className="h-12 w-full rounded-xl border border-[#bec9c6] px-3 pr-10 outline-none transition focus:border-[#004e47] focus:ring-1 focus:ring-[#004e47]"
+        />
+
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#687370]">
+          {suffix}
+        </span>
+      </div>
     </div>
   );
 }
