@@ -468,22 +468,10 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 
-/*
-|--------------------------------------------------------------------------
-| Types
-|--------------------------------------------------------------------------
-*/
-
 export interface ActionState {
   success: boolean;
   error: string;
 }
-
-/*
-|--------------------------------------------------------------------------
-| Get authenticated user
-|--------------------------------------------------------------------------
-*/
 
 async function getAuthenticatedUser() {
   const supabase = await createClient();
@@ -502,108 +490,74 @@ async function getAuthenticatedUser() {
   };
 }
 
-/*
-|--------------------------------------------------------------------------
-| Get today's date - India
-|--------------------------------------------------------------------------
-*/
-
-function getTodayIndia(): string {
+function getTodayIndia() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Kolkata",
   }).format(new Date());
 }
 
-/*
-|--------------------------------------------------------------------------
-| Helpers
-|--------------------------------------------------------------------------
-*/
+function getFormData(
+  first: FormData | ActionState,
+  second?: FormData
+): FormData | null {
+  if (second instanceof FormData) {
+    return second;
+  }
 
-function getString(
-  formData: FormData,
-  key: string
-): string {
-  return String(formData.get(key) ?? "").trim();
+  if (first instanceof FormData) {
+    return first;
+  }
+
+  return null;
 }
 
-function getNumber(
-  formData: FormData,
-  key: string
-): number {
-  const value = Number(formData.get(key) ?? 0);
-
-  return Number.isFinite(value) ? value : 0;
-}
-
-/*
-|--------------------------------------------------------------------------
-| ADD MEAL
-|--------------------------------------------------------------------------
-|
-| Used directly by:
-|
-| <form action={addMeal}>
-|
-| Therefore this action accepts FormData and returns Promise<void>.
-|
-|--------------------------------------------------------------------------
-*/
+/* ============================================================
+   ADD MEAL
+============================================================ */
 
 export async function addMeal(
-  formData: FormData
-): Promise<void> {
-  const {
-    supabase,
-    user,
-  } = await getAuthenticatedUser();
+  first: FormData | ActionState,
+  second?: FormData
+): Promise<ActionState> {
+  const formData = getFormData(first, second);
 
-  /*
-  |--------------------------------------------------------------------------
-  | Read form data
-  |--------------------------------------------------------------------------
-  */
+  if (!formData) {
+    return {
+      success: false,
+      error: "Invalid form submission.",
+    };
+  }
 
-  const mealType = getString(
-    formData,
-    "meal_type"
+  const { supabase, user } =
+    await getAuthenticatedUser();
+
+  const mealType = String(
+    formData.get("meal_type") ?? ""
+  ).trim();
+
+  const name = String(
+    formData.get("name") ?? ""
+  ).trim();
+
+  const description = String(
+    formData.get("description") ?? ""
+  ).trim();
+
+  const calories = Number(
+    formData.get("calories") ?? 0
   );
 
-  const name = getString(
-    formData,
-    "name"
+  const protein = Number(
+    formData.get("protein_g") ?? 0
   );
 
-  const description = getString(
-    formData,
-    "description"
+  const carbs = Number(
+    formData.get("carbs_g") ?? 0
   );
 
-  const calories = getNumber(
-    formData,
-    "calories"
+  const fat = Number(
+    formData.get("fat_g") ?? 0
   );
-
-  const protein = getNumber(
-    formData,
-    "protein_g"
-  );
-
-  const carbs = getNumber(
-    formData,
-    "carbs_g"
-  );
-
-  const fat = getNumber(
-    formData,
-    "fat_g"
-  );
-
-  /*
-  |--------------------------------------------------------------------------
-  | Validation
-  |--------------------------------------------------------------------------
-  */
 
   const validMealTypes = [
     "breakfast",
@@ -613,19 +567,29 @@ export async function addMeal(
   ];
 
   if (!validMealTypes.includes(mealType)) {
-    redirect(
-      `/diary/add-meal?error=${encodeURIComponent(
-        "Please select a valid meal type."
-      )}`
-    );
+    return {
+      success: false,
+      error: "Please select a valid meal type.",
+    };
   }
 
   if (!name) {
-    redirect(
-      `/diary/add-meal?error=${encodeURIComponent(
-        "Please enter the meal name."
-      )}`
-    );
+    return {
+      success: false,
+      error: "Please enter the meal name.",
+    };
+  }
+
+  if (
+    !Number.isFinite(calories) ||
+    !Number.isFinite(protein) ||
+    !Number.isFinite(carbs) ||
+    !Number.isFinite(fat)
+  ) {
+    return {
+      success: false,
+      error: "Please enter valid nutrition values.",
+    };
   }
 
   if (
@@ -634,49 +598,31 @@ export async function addMeal(
     carbs < 0 ||
     fat < 0
   ) {
-    redirect(
-      `/diary/add-meal?error=${encodeURIComponent(
-        "Nutrition values cannot be negative."
-      )}`
-    );
+    return {
+      success: false,
+      error: "Nutrition values cannot be negative.",
+    };
   }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Insert meal
-  |--------------------------------------------------------------------------
-  */
 
   const { error } = await supabase
     .from("meals")
     .insert({
       user_id: user.id,
-
       meal_date: getTodayIndia(),
-
       meal_type: mealType,
-
       name,
-
-      description:
-        description || null,
+      description: description || null,
 
       calories: Math.round(calories),
-
       protein_g: protein,
-
       carbs_g: carbs,
-
       fat_g: fat,
 
       ai_analyzed: false,
-    });
 
-  /*
-  |--------------------------------------------------------------------------
-  | Supabase error
-  |--------------------------------------------------------------------------
-  */
+      // IMPORTANT:
+      // image_url intentionally NOT saved.
+    });
 
   if (error) {
     console.error(
@@ -684,55 +630,38 @@ export async function addMeal(
       error
     );
 
-    redirect(
-      `/diary/add-meal?error=${encodeURIComponent(
+    return {
+      success: false,
+      error:
         error.message ||
-          "Unable to add meal."
-      )}`
-    );
+        "Unable to add meal.",
+    };
   }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Refresh pages
-  |--------------------------------------------------------------------------
-  */
 
   revalidatePath("/diary");
   revalidatePath("/");
-  revalidatePath("/progress");
 
-  /*
-  |--------------------------------------------------------------------------
-  | Return to diary
-  |--------------------------------------------------------------------------
-  */
-
-  redirect("/diary");
+  return {
+    success: true,
+    error: "",
+  };
 }
 
-/*
-|--------------------------------------------------------------------------
-| DELETE MEAL
-|--------------------------------------------------------------------------
-*/
+/* ============================================================
+   DELETE MEAL
+============================================================ */
 
 export async function deleteMeal(
   formData: FormData
-): Promise<void> {
-  const {
-    supabase,
-    user,
-  } = await getAuthenticatedUser();
+) {
+  const { supabase, user } =
+    await getAuthenticatedUser();
 
-  const id = getString(
-    formData,
-    "id"
+  const id = String(
+    formData.get("id") ?? ""
   );
 
-  if (!id) {
-    return;
-  }
+  if (!id) return;
 
   const { error } = await supabase
     .from("meals")
@@ -751,101 +680,76 @@ export async function deleteMeal(
 
   revalidatePath("/diary");
   revalidatePath("/");
-  revalidatePath("/progress");
 }
 
-/*
-|--------------------------------------------------------------------------
-| ADD ACTIVITY
-|--------------------------------------------------------------------------
-|
-| Used directly by:
-|
-| <form action={addActivity}>
-|
-|--------------------------------------------------------------------------
-*/
+/* ============================================================
+   ADD ACTIVITY
+============================================================ */
 
 export async function addActivity(
-  formData: FormData
-): Promise<void> {
-  const {
-    supabase,
-    user,
-  } = await getAuthenticatedUser();
+  first: FormData | ActionState,
+  second?: FormData
+): Promise<ActionState> {
+  const formData = getFormData(first, second);
 
-  /*
-  |--------------------------------------------------------------------------
-  | Read form data
-  |--------------------------------------------------------------------------
-  */
+  if (!formData) {
+    return {
+      success: false,
+      error: "Invalid form submission.",
+    };
+  }
 
-  const activityType = getString(
-    formData,
-    "activity_type"
+  const { supabase, user } =
+    await getAuthenticatedUser();
+
+  const activityType = String(
+    formData.get("activity_type") ?? ""
+  ).trim();
+
+  const activityName = String(
+    formData.get("activity_name") ?? ""
+  ).trim();
+
+  const duration = Number(
+    formData.get("duration_minutes") ?? 0
   );
 
-  const activityName = getString(
-    formData,
-    "activity_name"
+  const caloriesBurned = Number(
+    formData.get("calories_burned") ?? 0
   );
 
-  const duration = getNumber(
-    formData,
-    "duration_minutes"
-  );
-
-  const caloriesBurned = getNumber(
-    formData,
-    "calories_burned"
-  );
-
-  const note = getString(
-    formData,
-    "note"
-  );
-
-  /*
-  |--------------------------------------------------------------------------
-  | Validation
-  |--------------------------------------------------------------------------
-  */
+  const note = String(
+    formData.get("note") ?? ""
+  ).trim();
 
   if (!activityName) {
-    redirect(
-      `/diary/add-activity?error=${encodeURIComponent(
-        "Please enter an activity name."
-      )}`
-    );
+    return {
+      success: false,
+      error: "Please enter an activity name.",
+    };
   }
 
   if (
     !Number.isFinite(duration) ||
     duration <= 0
   ) {
-    redirect(
-      `/diary/add-activity?error=${encodeURIComponent(
-        "Please enter a valid duration."
-      )}`
-    );
+    return {
+      success: false,
+      error:
+        "Please enter a valid duration.",
+    };
   }
 
   if (
     !Number.isFinite(caloriesBurned) ||
     caloriesBurned < 0
   ) {
-    redirect(
-      `/diary/add-activity?error=${encodeURIComponent(
-        "Please enter valid calories burned."
-      )}`
-    );
+    return {
+      success: false,
+      error:
+        "Please enter valid calories burned.",
+    };
   }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Insert activity
-  |--------------------------------------------------------------------------
-  */
 
   const { error } = await supabase
     .from("activities")
@@ -867,15 +771,8 @@ export async function addActivity(
       calories_burned:
         Math.round(caloriesBurned),
 
-      note:
-        note || null,
+      note: note || null,
     });
-
-  /*
-  |--------------------------------------------------------------------------
-  | Supabase error
-  |--------------------------------------------------------------------------
-  */
 
   if (error) {
     console.error(
@@ -883,55 +780,38 @@ export async function addActivity(
       error
     );
 
-    redirect(
-      `/diary/add-activity?error=${encodeURIComponent(
+    return {
+      success: false,
+      error:
         error.message ||
-          "Unable to add activity."
-      )}`
-    );
+        "Unable to add activity.",
+    };
   }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Refresh
-  |--------------------------------------------------------------------------
-  */
 
   revalidatePath("/diary");
   revalidatePath("/");
-  revalidatePath("/progress");
 
-  /*
-  |--------------------------------------------------------------------------
-  | Return to diary
-  |--------------------------------------------------------------------------
-  */
-
-  redirect("/diary");
+  return {
+    success: true,
+    error: "",
+  };
 }
 
-/*
-|--------------------------------------------------------------------------
-| DELETE ACTIVITY
-|--------------------------------------------------------------------------
-*/
+/* ============================================================
+   DELETE ACTIVITY
+============================================================ */
 
 export async function deleteActivity(
   formData: FormData
-): Promise<void> {
-  const {
-    supabase,
-    user,
-  } = await getAuthenticatedUser();
+) {
+  const { supabase, user } =
+    await getAuthenticatedUser();
 
-  const id = getString(
-    formData,
-    "id"
+  const id = String(
+    formData.get("id") ?? ""
   );
 
-  if (!id) {
-    return;
-  }
+  if (!id) return;
 
   const { error } = await supabase
     .from("activities")
@@ -950,5 +830,4 @@ export async function deleteActivity(
 
   revalidatePath("/diary");
   revalidatePath("/");
-  revalidatePath("/progress");
 }
