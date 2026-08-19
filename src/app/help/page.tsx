@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-
+import ProtectedAppShell from "@/components/navigation/ProtectedAppShell";
 import AppShell from "@/components/navigation/AppShell";
 import HelpCenter from "./HelpCenter";
 
@@ -30,7 +30,7 @@ export default async function HelpPage({
     .maybeSingle();
 
   return (
-    <AppShell>
+    <ProtectedAppShell>
       <main className="min-h-screen bg-[#f8f9fa] text-[#191c1d]">
         <div className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 md:px-8 lg:px-10 xl:px-8 xl:py-8">
 
@@ -47,6 +47,6 @@ export default async function HelpPage({
 
         </div>
       </main>
-    </AppShell>
+    </ProtectedAppShell>
   );
 }

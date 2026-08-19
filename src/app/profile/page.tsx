@@ -18,8 +18,7 @@ import {
 } from "./actions";
 
 import { createClient } from "@/lib/supabase/server";
-import AppShell from "@/components/navigation/AppShell";
-
+import ProtectedAppShell from "@/components/navigation/ProtectedAppShell";
 /* =========================================================
    HELPERS
 ========================================================= */
@@ -110,7 +109,7 @@ export default async function ProfilePage({
 
   if (profileError || !profile) {
     return (
-      <AppShell>
+      <ProtectedAppShell>
         <main className="min-h-screen bg-[#f8f9fa]">
           <div className="mx-auto w-full max-w-[1400px] px-4 py-8 sm:px-6 lg:px-10">
             <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700">
@@ -118,7 +117,7 @@ export default async function ProfilePage({
             </div>
           </div>
         </main>
-      </AppShell>
+      </ProtectedAppShell>
     );
   }
 
@@ -131,7 +130,7 @@ export default async function ProfilePage({
   ======================================================= */
 
   return (
-    <AppShell>
+    <ProtectedAppShell>
       <main className="min-h-screen bg-[#f8f9fa] text-[#191c1d]">
         <div className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 md:px-8 lg:px-10 xl:px-8 xl:py-8">
 
@@ -554,7 +553,7 @@ export default async function ProfilePage({
 
         </div>
       </main>
-    </AppShell>
+    </ProtectedAppShell>
   );
 }
 

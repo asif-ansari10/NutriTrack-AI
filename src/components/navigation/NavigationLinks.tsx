@@ -247,3 +247,169 @@ export function MobileNavigation({
     </nav>
   );
 }
+
+// "use client";
+
+// import Link from "next/link";
+// import {
+//   Home,
+//   BookOpen,
+//   TrendingUp,
+//   User,
+//   HelpCircle,
+//   LogIn,
+// } from "lucide-react";
+
+// import { usePathname } from "next/navigation";
+
+// const navItems = [
+//   {
+//     label: "Home",
+//     href: "/",
+//     icon: Home,
+//     requiresAuth: false,
+//   },
+//   {
+//     label: "Diary",
+//     href: "/diary",
+//     icon: BookOpen,
+//     requiresAuth: true,
+//   },
+//   {
+//     label: "Progress",
+//     href: "/progress",
+//     icon: TrendingUp,
+//     requiresAuth: true,
+//   },
+//   {
+//     label: "Profile",
+//     href: "/profile",
+//     icon: User,
+//     requiresAuth: true,
+//   },
+//   {
+//     label: "Help",
+//     href: "/help",
+//     icon: HelpCircle,
+//     requiresAuth: false,
+//   },
+// ];
+
+// function isActiveRoute(
+//   pathname: string,
+//   href: string
+// ) {
+//   if (href === "/") {
+//     return pathname === "/";
+//   }
+
+//   return (
+//     pathname === href ||
+//     pathname.startsWith(`${href}/`)
+//   );
+// }
+
+
+// export function DesktopNavigation({
+//   isLoggedIn,
+// }: {
+//   isLoggedIn: boolean;
+// }) {
+//   const pathname = usePathname();
+
+//   return (
+//     <nav className="flex-1 space-y-2">
+
+//       {navItems.map((item) => {
+//         const Icon = item.icon;
+
+//         const active = isActiveRoute(
+//           pathname,
+//           item.href
+//         );
+
+//         /*
+//          * Protected item while logged out.
+//          *
+//          * Don't make it clickable.
+//          */
+
+//         if (
+//           item.requiresAuth &&
+//           !isLoggedIn
+//         ) {
+//           return (
+//             <div
+//               key={item.label}
+//               className="
+//                 flex
+//                 h-12
+//                 cursor-not-allowed
+//                 items-center
+//                 gap-3
+//                 rounded-xl
+//                 px-4
+//                 text-sm
+//                 font-medium
+//                 text-[#a4aeac]
+//               "
+//               title="Please login to access this page"
+//             >
+//               <Icon
+//                 size={22}
+//                 strokeWidth={2}
+//               />
+
+//               <span>
+//                 {item.label}
+//               </span>
+//             </div>
+//           );
+//         }
+
+//         return (
+//           <Link
+//             key={item.label}
+//             href={item.href}
+//             aria-current={
+//               active
+//                 ? "page"
+//                 : undefined
+//             }
+//             className={`
+//               flex
+//               h-12
+//               items-center
+//               gap-3
+//               rounded-xl
+//               px-4
+//               text-sm
+//               transition-colors
+//               duration-150
+//               ${
+//                 active
+//                   ? "bg-[#91f4e6] font-bold text-[#005049]"
+//                   : "font-medium text-[#3e4947] hover:bg-[#f0f3f2] hover:text-[#005049]"
+//               }
+//             `}
+//           >
+
+//             <Icon
+//               size={22}
+//               strokeWidth={
+//                 active ? 2.4 : 2
+//               }
+//               className="shrink-0"
+//             />
+
+//             <span>
+//               {item.label}
+//             </span>
+
+//           </Link>
+//         );
+//       })}
+
+//     </nav>
+//   );
+// }
