@@ -8,6 +8,10 @@ import {
   getDashboardData,
 } from "@/lib/dashboard/getDashboardData";
 
+/* ============================================================
+   BASELINE BURN
+============================================================ */
+
 function calculateBaselineBurn(
   profile: NonNullable<
     Awaited<
@@ -23,6 +27,7 @@ function calculateBaselineBurn(
    * If we don't have enough information,
    * use the nutrition target as fallback.
    */
+
   if (
     !profile.daily_calorie_target
   ) {
@@ -30,25 +35,36 @@ function calculateBaselineBurn(
   }
 
   /*
-   * The onboarding calculation uses:
+   * The nutrition calculation uses:
    *
-   * Lose     = maintenance - 500
-   * Maintain = maintenance
-   * Gain     = maintenance + 300
+   * Lose:
+   * maintenance - 500
+   *
+   * Maintain:
+   * maintenance
+   *
+   * Gain:
+   * maintenance + 300
    *
    * Reverse that adjustment to estimate
-   * maintenance/baseline calories.
+   * baseline / maintenance calories.
    */
 
-  if (profile.goal === "lose") {
+  if (
+    profile.goal === "lose"
+  ) {
     return (
-      profile.daily_calorie_target + 500
+      profile.daily_calorie_target +
+      500
     );
   }
 
-  if (profile.goal === "gain") {
+  if (
+    profile.goal === "gain"
+  ) {
     return Math.max(
-      profile.daily_calorie_target - 300,
+      profile.daily_calorie_target -
+        300,
       0
     );
   }
@@ -56,22 +72,29 @@ function calculateBaselineBurn(
   return profile.daily_calorie_target;
 }
 
+/* ============================================================
+   DASHBOARD
+============================================================ */
+
 export default async function HomeDashboard() {
   const data =
     await getDashboardData();
 
-  const profile = data.profile;
+  const profile =
+    data.profile;
 
   const baselineBurn =
     profile
-      ? calculateBaselineBurn(profile)
+      ? calculateBaselineBurn(
+          profile
+        )
       : 0;
 
   return (
     <>
-      {/* ================================================
+      {/* ======================================================
           HEADER
-      ================================================= */}
+      ====================================================== */}
 
       <DashboardHeader
         name={
@@ -85,17 +108,21 @@ export default async function HomeDashboard() {
         }
       />
 
-      {/* ================================================
-          DASHBOARD
-      ================================================= */}
+      {/* ======================================================
+          DASHBOARD GRID
+      ====================================================== */}
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-12 xl:gap-6">
 
-        {/* ==============================================
+        {/* ====================================================
             CALORIES + MACROS
-        ============================================== */}
+        ==================================================== */}
 
         <div className="space-y-5 md:col-span-1 xl:col-span-4">
+
+          {/* --------------------------------------------------
+              CALORIE RING
+          -------------------------------------------------- */}
 
           <CalorieRing
             consumed={
@@ -108,35 +135,53 @@ export default async function HomeDashboard() {
             }
           />
 
+          {/* --------------------------------------------------
+              MACROS
+          -------------------------------------------------- */}
+
           <MacroSummary
             protein={
               data.totals.protein
             }
             proteinTarget={
               profile
-                ?.protein_target_g || 0
+                ?.protein_target_g ||
+              0
             }
+
             carbs={
               data.totals.carbs
             }
             carbsTarget={
               profile
-                ?.carbs_target_g || 0
+                ?.carbs_target_g ||
+              0
             }
+
             fat={
               data.totals.fat
             }
             fatTarget={
               profile
-                ?.fat_target_g || 0
+                ?.fat_target_g ||
+              0
+            }
+
+            fiber={
+              data.totals.fiber
+            }
+            fiberTarget={
+              profile
+                ?.fiber_target_g ||
+              0
             }
           />
 
         </div>
 
-        {/* ==============================================
-            ENERGY
-        ============================================== */}
+        {/* ====================================================
+            ENERGY BALANCE
+        ==================================================== */}
 
         <div className="md:col-span-1 xl:col-span-5">
 
@@ -155,9 +200,9 @@ export default async function HomeDashboard() {
 
         </div>
 
-        {/* ==============================================
+        {/* ====================================================
             MEALS
-        ============================================== */}
+        ==================================================== */}
 
         <div className="md:col-span-2 xl:col-span-3">
 

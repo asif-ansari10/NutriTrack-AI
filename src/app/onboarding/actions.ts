@@ -1,152 +1,24 @@
 "use server";
 
 import { redirect } from "next/navigation";
+
 import { createClient } from "@/lib/supabase/server";
 
-type Goal = "lose" | "maintain" | "gain";
-
-type Gender = "male" | "female" | "other";
-
-type Activity =
-  | "sedentary"
-  | "light"
-  | "moderate"
-  | "active"
-  | "very_active";
-
-function calculateAge(dateOfBirth: string) {
-  const dob = new Date(dateOfBirth);
-  const today = new Date();
-
-  let age =
-    today.getFullYear() -
-    dob.getFullYear();
-
-  const monthDifference =
-    today.getMonth() -
-    dob.getMonth();
-
-  if (
-    monthDifference < 0 ||
-    (monthDifference === 0 &&
-      today.getDate() < dob.getDate())
-  ) {
-    age--;
-  }
-
-  return age;
-}
-
-function calculateNutrition({
-  gender,
-  age,
-  height,
-  weight,
-  goal,
-  activity,
-}: {
-  gender: Gender;
-  age: number;
-  height: number;
-  weight: number;
-  goal: Goal;
-  activity: Activity;
-}) {
-  /*
-   * Mifflin-St Jeor
-   */
-
-  let bmr: number;
-
-  if (gender === "female") {
-    bmr =
-      10 * weight +
-      6.25 * height -
-      5 * age -
-      161;
-  } else {
-    bmr =
-      10 * weight +
-      6.25 * height -
-      5 * age +
-      5;
-  }
-
-  const activityMultipliers: Record<
-    Activity,
-    number
-  > = {
-    sedentary: 1.2,
-    light: 1.375,
-    moderate: 1.55,
-    active: 1.725,
-    very_active: 1.9,
-  };
-
-  const maintenanceCalories =
-    bmr * activityMultipliers[activity];
-
-  let calories = maintenanceCalories;
-
-  if (goal === "lose") {
-    calories -= 500;
-  }
-
-  if (goal === "gain") {
-    calories += 300;
-  }
-
-  calories = Math.max(
-    1200,
-    Math.round(calories)
-  );
-
-  /*
-   * Protein
-   */
-
-  const proteinPerKg =
-    goal === "gain" ? 1.8 : 1.6;
-
-  const protein = Math.round(
-    weight * proteinPerKg
-  );
-
-  /*
-   * Fat = approximately 25% calories
-   */
-
-  const fat = Math.round(
-    (calories * 0.25) / 9
-  );
-
-  /*
-   * Remaining calories = carbs
-   */
-
-  const carbs = Math.max(
-    0,
-    Math.round(
-      (calories -
-        protein * 4 -
-        fat * 9) /
-        4
-    )
-  );
-
-  return {
-    daily_calorie_target: calories,
-    protein_target_g: protein,
-    carbs_target_g: carbs,
-    fat_target_g: fat,
-  };
-}
+import {
+  calculateAge,
+  calculateNutrition,
+  type Goal,
+  type Gender,
+  type Activity,
+} from "@/lib/nutrition/calculateNutrition";
 
 export async function completeOnboarding(
   formData: FormData
 ) {
   /*
-   * Read form data
+   * =========================================
+   * 1. READ FORM DATA
+   * =========================================
    */
 
   const goal = String(
@@ -178,28 +50,46 @@ export async function completeOnboarding(
   ) as Activity;
 
   /*
-   * Validation
+   * =========================================
+   * 2. VALIDATE GOAL
+   * =========================================
    */
 
   if (
-    !["lose", "maintain", "gain"].includes(
-      goal
-    )
+    ![
+      "lose",
+      "maintain",
+      "gain",
+    ].includes(goal)
   ) {
     redirect(
       "/onboarding?error=Invalid%20goal."
     );
   }
 
+  /*
+   * =========================================
+   * 3. VALIDATE GENDER
+   * =========================================
+   */
+
   if (
-    !["male", "female", "other"].includes(
-      gender
-    )
+    ![
+      "male",
+      "female",
+      "other",
+    ].includes(gender)
   ) {
     redirect(
       "/onboarding?error=Please%20select%20your%20gender."
     );
   }
+
+  /*
+   * =========================================
+   * 4. VALIDATE DOB
+   * =========================================
+   */
 
   if (!dateOfBirth) {
     redirect(
@@ -207,16 +97,26 @@ export async function completeOnboarding(
     );
   }
 
-  const age = calculateAge(dateOfBirth);
+  const age =
+    calculateAge(dateOfBirth);
 
-  if (age < 13 || age > 100) {
+  if (
+    age < 13 ||
+    age > 100
+  ) {
     redirect(
       "/onboarding?error=Age%20must%20be%20between%2013%20and%20100."
     );
   }
 
+  /*
+   * =========================================
+   * 5. VALIDATE HEIGHT
+   * =========================================
+   */
+
   if (
-    !height ||
+    !Number.isFinite(height) ||
     height < 100 ||
     height > 250
   ) {
@@ -225,8 +125,16 @@ export async function completeOnboarding(
     );
   }
 
+  /*
+   * =========================================
+   * 6. VALIDATE CURRENT WEIGHT
+   * =========================================
+   */
+
   if (
-    !currentWeight ||
+    !Number.isFinite(
+      currentWeight
+    ) ||
     currentWeight < 30 ||
     currentWeight > 300
   ) {
@@ -235,8 +143,16 @@ export async function completeOnboarding(
     );
   }
 
+  /*
+   * =========================================
+   * 7. VALIDATE TARGET WEIGHT
+   * =========================================
+   */
+
   if (
-    !targetWeight ||
+    !Number.isFinite(
+      targetWeight
+    ) ||
     targetWeight < 30 ||
     targetWeight > 300
   ) {
@@ -245,9 +161,16 @@ export async function completeOnboarding(
     );
   }
 
+  /*
+   * =========================================
+   * 8. GOAL + TARGET WEIGHT VALIDATION
+   * =========================================
+   */
+
   if (
     goal === "lose" &&
-    targetWeight >= currentWeight
+    targetWeight >=
+      currentWeight
   ) {
     redirect(
       `/onboarding?error=${encodeURIComponent(
@@ -258,7 +181,8 @@ export async function completeOnboarding(
 
   if (
     goal === "gain" &&
-    targetWeight <= currentWeight
+    targetWeight <=
+      currentWeight
   ) {
     redirect(
       `/onboarding?error=${encodeURIComponent(
@@ -266,6 +190,12 @@ export async function completeOnboarding(
       )}`
     );
   }
+
+  /*
+   * =========================================
+   * 9. VALIDATE ACTIVITY
+   * =========================================
+   */
 
   if (
     ![
@@ -282,7 +212,17 @@ export async function completeOnboarding(
   }
 
   /*
-   * Calculate nutrition
+   * =========================================
+   * 10. CALCULATE NUTRITION
+   *
+   * This now includes:
+   *
+   * Calories
+   * Protein
+   * Carbs
+   * Fat
+   * Fiber
+   * =========================================
    */
 
   const nutrition =
@@ -290,42 +230,66 @@ export async function completeOnboarding(
       gender,
       age,
       height,
-      weight: currentWeight,
+      weight:
+        currentWeight,
       goal,
       activity,
     });
 
+  console.log(
+    "Calculated onboarding nutrition:",
+    nutrition
+  );
+
   /*
-   * Supabase
+   * =========================================
+   * 11. SUPABASE
+   * =========================================
    */
 
   const supabase =
     await createClient();
 
   /*
-   * Get logged-in user
+   * =========================================
+   * 12. GET LOGGED-IN USER
+   * =========================================
    */
 
   const {
-    data: { user },
+    data: {
+      user,
+    },
     error: userError,
-  } = await supabase.auth.getUser();
+  } =
+    await supabase.auth.getUser();
 
-  if (userError || !user) {
+  if (
+    userError ||
+    !user
+  ) {
     redirect(
       "/login?error=Please%20login%20to%20continue."
     );
   }
 
   /*
-   * Make sure profile exists
+   * =========================================
+   * 13. CHECK PROFILE
+   * =========================================
    */
 
-  const { data: existingProfile, error: profileError } =
+  const {
+    data: existingProfile,
+    error: profileError,
+  } =
     await supabase
       .from("profiles")
       .select("id")
-      .eq("id", user.id)
+      .eq(
+        "id",
+        user.id
+      )
       .maybeSingle();
 
   if (profileError) {
@@ -355,18 +319,27 @@ export async function completeOnboarding(
   }
 
   /*
-   * UPDATE PROFILE
+   * =========================================
+   * 14. UPDATE PROFILE
+   * =========================================
    */
 
-  const { data: updatedProfile, error: updateError } =
+  const {
+    data: updatedProfile,
+    error: updateError,
+  } =
     await supabase
       .from("profiles")
       .update({
         goal,
-        gender,
-        date_of_birth: dateOfBirth,
 
-        height_cm: height,
+        gender,
+
+        date_of_birth:
+          dateOfBirth,
+
+        height_cm:
+          height,
 
         current_weight_kg:
           currentWeight,
@@ -376,6 +349,10 @@ export async function completeOnboarding(
 
         activity_level:
           activity,
+
+        /*
+         * CALCULATED TARGETS
+         */
 
         daily_calorie_target:
           nutrition.daily_calorie_target,
@@ -389,19 +366,28 @@ export async function completeOnboarding(
         fat_target_g:
           nutrition.fat_target_g,
 
-        onboarding_completed: true,
+        fiber_target_g:
+          nutrition.fiber_target_g,
+
+        onboarding_completed:
+          true,
 
         updated_at:
           new Date().toISOString(),
       })
-      .eq("id", user.id)
+      .eq(
+        "id",
+        user.id
+      )
       .select(
-        "id, onboarding_completed"
+        "id, onboarding_completed, daily_calorie_target, protein_target_g, carbs_target_g, fat_target_g, fiber_target_g"
       )
       .single();
 
   /*
-   * Update failed
+   * =========================================
+   * 15. UPDATE ERROR
+   * =========================================
    */
 
   if (updateError) {
@@ -418,13 +404,15 @@ export async function completeOnboarding(
   }
 
   /*
-   * IMPORTANT:
-   * Verify database actually saved it.
+   * =========================================
+   * 16. VERIFY SAVE
+   * =========================================
    */
 
   if (
     !updatedProfile ||
-    updatedProfile.onboarding_completed !== true
+    updatedProfile.onboarding_completed !==
+      true
   ) {
     console.error(
       "Profile update did not persist:",
@@ -439,7 +427,9 @@ export async function completeOnboarding(
   }
 
   /*
-   * SUCCESS
+   * =========================================
+   * 17. SUCCESS
+   * =========================================
    */
 
   redirect("/");

@@ -1,17 +1,28 @@
 import { createClient } from "@/lib/supabase/server";
 
+/* ============================================================
+   DASHBOARD MEAL
+============================================================ */
+
 export interface DashboardMeal {
   id: string;
   meal_type: string;
   name: string;
   description: string | null;
   image_url: string | null;
+
   calories: number;
   protein_g: number;
   carbs_g: number;
   fat_g: number;
+  fiber_g: number;
+
   serving_size: string | null;
 }
+
+/* ============================================================
+   DASHBOARD ACTIVITY
+============================================================ */
 
 export interface DashboardActivity {
   id: string;
@@ -22,22 +33,31 @@ export interface DashboardActivity {
   note: string | null;
 }
 
+/* ============================================================
+   DASHBOARD DATA
+============================================================ */
+
 export interface DashboardData {
   authenticated: boolean;
 
   profile: {
     full_name: string;
     goal: string | null;
+
     current_weight_kg: number | null;
     target_weight_kg: number | null;
+
     daily_calorie_target: number;
     protein_target_g: number;
     carbs_target_g: number;
     fat_target_g: number;
+    fiber_target_g: number;
+
     activity_level: string | null;
   } | null;
 
   meals: DashboardMeal[];
+
   activities: DashboardActivity[];
 
   totals: {
@@ -45,9 +65,14 @@ export interface DashboardData {
     protein: number;
     carbs: number;
     fat: number;
+    fiber: number;
     exerciseCalories: number;
   };
 }
+
+/* ============================================================
+   EMPTY DATA
+============================================================ */
 
 const EMPTY_DATA: DashboardData = {
   authenticated: false,
@@ -63,43 +88,59 @@ const EMPTY_DATA: DashboardData = {
     protein: 0,
     carbs: 0,
     fat: 0,
+    fiber: 0,
     exerciseCalories: 0,
   },
 };
 
+/* ============================================================
+   GET DASHBOARD DATA
+============================================================ */
+
 export async function getDashboardData(): Promise<DashboardData> {
-  const supabase = await createClient();
+  const supabase =
+    await createClient();
+
+  /* ==========================================================
+     AUTH
+  ========================================================== */
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } =
+    await supabase.auth.getUser();
 
   /*
-   * Not logged in
+   * User is not logged in.
    *
    * Never return fake/demo data.
    */
+
   if (!user) {
     return EMPTY_DATA;
   }
 
-  /*
-   * Current date.
-   *
-   * Using India timezone because your application
-   * is currently being developed/tested in India.
-   */
-  const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kolkata",
-  }).format(new Date());
+  /* ==========================================================
+     TODAY - INDIA
+  ========================================================== */
 
-  /*
-   * -------------------------------------------------------
-   * PROFILE
-   * -------------------------------------------------------
-   */
+  const today =
+    new Intl.DateTimeFormat(
+      "en-CA",
+      {
+        timeZone:
+          "Asia/Kolkata",
+      }
+    ).format(new Date());
 
-  const { data: profile, error: profileError } =
+  /* ==========================================================
+     PROFILE
+  ========================================================== */
+
+  const {
+    data: profile,
+    error: profileError,
+  } =
     await supabase
       .from("profiles")
       .select(
@@ -108,14 +149,20 @@ export async function getDashboardData(): Promise<DashboardData> {
           goal,
           current_weight_kg,
           target_weight_kg,
+
           daily_calorie_target,
           protein_target_g,
           carbs_target_g,
           fat_target_g,
+          fiber_target_g,
+
           activity_level
         `
       )
-      .eq("id", user.id)
+      .eq(
+        "id",
+        user.id
+      )
       .maybeSingle();
 
   if (profileError) {
@@ -125,13 +172,14 @@ export async function getDashboardData(): Promise<DashboardData> {
     );
   }
 
-  /*
-   * -------------------------------------------------------
-   * TODAY'S MEALS
-   * -------------------------------------------------------
-   */
+  /* ==========================================================
+     TODAY'S MEALS
+  ========================================================== */
 
-  const { data: meals, error: mealsError } =
+  const {
+    data: meals,
+    error: mealsError,
+  } =
     await supabase
       .from("meals")
       .select(
@@ -141,18 +189,30 @@ export async function getDashboardData(): Promise<DashboardData> {
           name,
           description,
           image_url,
+
           calories,
           protein_g,
           carbs_g,
           fat_g,
+          fiber_g,
+
           serving_size
         `
       )
-      .eq("user_id", user.id)
-      .eq("meal_date", today)
-      .order("created_at", {
-        ascending: true,
-      });
+      .eq(
+        "user_id",
+        user.id
+      )
+      .eq(
+        "meal_date",
+        today
+      )
+      .order(
+        "created_at",
+        {
+          ascending: true,
+        }
+      );
 
   if (mealsError) {
     console.error(
@@ -161,32 +221,40 @@ export async function getDashboardData(): Promise<DashboardData> {
     );
   }
 
-  /*
-   * -------------------------------------------------------
-   * TODAY'S ACTIVITIES
-   * -------------------------------------------------------
-   */
+  /* ==========================================================
+     TODAY'S ACTIVITIES
+  ========================================================== */
 
   const {
     data: activities,
     error: activitiesError,
-  } = await supabase
-    .from("activities")
-    .select(
-      `
-        id,
-        activity_type,
-        activity_name,
-        duration_minutes,
-        calories_burned,
-        note
-      `
-    )
-    .eq("user_id", user.id)
-    .eq("activity_date", today)
-    .order("created_at", {
-      ascending: true,
-    });
+  } =
+    await supabase
+      .from("activities")
+      .select(
+        `
+          id,
+          activity_type,
+          activity_name,
+          duration_minutes,
+          calories_burned,
+          note
+        `
+      )
+      .eq(
+        "user_id",
+        user.id
+      )
+      .eq(
+        "activity_date",
+        today
+      )
+      .order(
+        "created_at",
+        {
+          ascending: true,
+        }
+      );
 
   if (activitiesError) {
     console.error(
@@ -195,75 +263,119 @@ export async function getDashboardData(): Promise<DashboardData> {
     );
   }
 
-  /*
-   * -------------------------------------------------------
-   * CALCULATE TOTALS
-   * -------------------------------------------------------
-   */
+  /* ==========================================================
+     SAFE DATA
+  ========================================================== */
 
-  const safeMeals = (meals ?? []) as DashboardMeal[];
+  const safeMeals =
+    (meals ?? []) as DashboardMeal[];
 
   const safeActivities =
     (activities ?? []) as DashboardActivity[];
 
-  const totals = safeMeals.reduce(
-    (acc, meal) => {
-      acc.calories += Number(
-        meal.calories || 0
-      );
+  /* ==========================================================
+     CALCULATE FOOD TOTALS
+     
+     Includes:
+     - Calories
+     - Protein
+     - Carbs
+     - Fat
+     - Fiber
+  ========================================================== */
 
-      acc.protein += Number(
-        meal.protein_g || 0
-      );
+  const totals =
+    safeMeals.reduce(
+      (
+        acc,
+        meal
+      ) => {
+        acc.calories +=
+          Number(
+            meal.calories || 0
+          );
 
-      acc.carbs += Number(
-        meal.carbs_g || 0
-      );
+        acc.protein +=
+          Number(
+            meal.protein_g || 0
+          );
 
-      acc.fat += Number(
-        meal.fat_g || 0
-      );
+        acc.carbs +=
+          Number(
+            meal.carbs_g || 0
+          );
 
-      return acc;
-    },
-    {
-      calories: 0,
-      protein: 0,
-      carbs: 0,
-      fat: 0,
-    }
-  );
+        acc.fat +=
+          Number(
+            meal.fat_g || 0
+          );
+
+        acc.fiber +=
+          Number(
+            meal.fiber_g || 0
+          );
+
+        return acc;
+      },
+      {
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        fiber: 0,
+      }
+    );
+
+  /* ==========================================================
+     EXERCISE CALORIES
+  ========================================================== */
 
   const exerciseCalories =
     safeActivities.reduce(
-      (total, activity) =>
+      (
+        total,
+        activity
+      ) =>
         total +
         Number(
-          activity.calories_burned || 0
+          activity.calories_burned ||
+            0
         ),
       0
     );
 
+  /* ==========================================================
+     RETURN DASHBOARD DATA
+  ========================================================== */
+
   return {
     authenticated: true,
+
+    /* ========================================================
+       PROFILE
+    ======================================================== */
 
     profile: profile
       ? {
           full_name:
-            profile.full_name || "",
+            profile.full_name ||
+            "",
 
           goal:
-            profile.goal || null,
+            profile.goal ||
+            null,
 
           current_weight_kg:
-            profile.current_weight_kg
+            profile.current_weight_kg !==
+            null
               ? Number(
                   profile.current_weight_kg
                 )
               : null,
 
           target_weight_kg:
-            profile.target_weight_kg
+            profile.target_weight_kg !==
+            null
               ? Number(
                   profile.target_weight_kg
                 )
@@ -289,7 +401,14 @@ export async function getDashboardData(): Promise<DashboardData> {
 
           fat_target_g:
             Number(
-              profile.fat_target_g || 0
+              profile.fat_target_g ||
+                0
+            ),
+
+          fiber_target_g:
+            Number(
+              profile.fiber_target_g ||
+                0
             ),
 
           activity_level:
@@ -298,29 +417,57 @@ export async function getDashboardData(): Promise<DashboardData> {
         }
       : null,
 
+    /* ========================================================
+       MEALS
+    ======================================================== */
+
     meals: safeMeals,
 
-    activities: safeActivities,
+    /* ========================================================
+       ACTIVITIES
+    ======================================================== */
+
+    activities:
+      safeActivities,
+
+    /* ========================================================
+       TOTALS
+    ======================================================== */
 
     totals: {
-      calories: Math.round(
-        totals.calories
-      ),
+      calories:
+        Math.round(
+          totals.calories
+        ),
 
-      protein: Math.round(
-        totals.protein
-      ),
+      protein:
+        Math.round(
+          totals.protein
+        ),
 
-      carbs: Math.round(
-        totals.carbs
-      ),
+      carbs:
+        Math.round(
+          totals.carbs
+        ),
 
-      fat: Math.round(
-        totals.fat
-      ),
+      fat:
+        Math.round(
+          totals.fat
+        ),
+
+      /*
+       * Fiber can be decimal,
+       * so keep one decimal place.
+       */
+      fiber:
+        Math.round(
+          totals.fiber * 10
+        ) / 10,
 
       exerciseCalories:
-        Math.round(exerciseCalories),
+        Math.round(
+          exerciseCalories
+        ),
     },
   };
 }

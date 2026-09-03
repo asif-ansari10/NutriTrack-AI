@@ -366,32 +366,33 @@ export default function UpdateWeightModal({
             </label>
 
             <textarea
-              id="progress-weight-note"
-              value={note}
-              onChange={(event) =>
-                setNote(event.target.value)
-              }
-              rows={3}
-              disabled={saving}
-              placeholder="e.g. Morning weight"
-              className="
-                w-full resize-none
-                rounded-xl
-                border border-[#bec9c6]
-                bg-white
-                px-4 py-3
-                text-sm
-                text-[#191c1d]
-                outline-none
-                transition-colors
-                placeholder:text-[#9aa3a1]
-                focus:border-[#00685f]
-                focus:ring-2
-                focus:ring-[#00685f]/15
-                disabled:cursor-not-allowed
-                disabled:bg-[#f4f6f5]
-              "
-            />
+  id="progress-weight-note"
+  value={note}
+  onChange={(event) =>
+    setNote(event.target.value)
+  }
+  rows={3}
+  disabled={saving}
+  placeholder="e.g. Morning weight"
+  className="
+    w-full
+    resize-none
+    rounded-xl
+    border border-[#bec9c6]
+    bg-white
+    px-4 py-3
+    text-base
+    text-[#191c1d]
+    outline-none
+    transition-colors
+    placeholder:text-[#9aa3a1]
+    focus:border-[#00685f]
+    focus:ring-2
+    focus:ring-[#00685f]/15
+    disabled:cursor-not-allowed
+    disabled:bg-[#f4f6f5]
+  "
+/>
           </div>
 
           {/* ERROR */}
