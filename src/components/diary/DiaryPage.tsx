@@ -515,15 +515,10 @@ export default function DiaryPage({
           ADD ACTIVITY MODAL
       ====================================================== */}
 
-      {showActivityModal && (
-        <AddActivityModal
-          onClose={() =>
-            setShowActivityModal(
-              false
-            )
-          }
-        />
-      )}
+<AddActivityModal
+  open={showActivityModal}
+  onClose={() => setShowActivityModal(false)}
+/>
 
       {/* ======================================================
           DELETE CONFIRMATION MODAL
