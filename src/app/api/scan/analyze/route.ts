@@ -3,19 +3,26 @@ import { GoogleGenAI } from "@google/genai";
 
 import { createClient } from "@/lib/supabase/server";
 
-/* =========================================================
+/* ============================================================
    GEMINI
-========================================================= */
+============================================================ */
 
-const apiKey = process.env.GEMINI_API_KEY;
+const apiKey =
+  process.env.GEMINI_API_KEY;
+
+if (!apiKey) {
+  console.warn(
+    "GEMINI_API_KEY is not configured."
+  );
+}
 
 const ai = new GoogleGenAI({
   apiKey: apiKey || "",
 });
 
-/* =========================================================
+/* ============================================================
    TYPES
-========================================================= */
+============================================================ */
 
 interface AnalyzeRequest {
   image?: string;
@@ -26,94 +33,226 @@ interface AnalyzeRequest {
 }
 
 interface GeminiMealResult {
-  meal_type: "breakfast" | "lunch" | "snack" | "dinner";
+  meal_type: MealType;
   name: string;
   description: string;
+
   calories: number;
   protein_g: number;
   carbs_g: number;
   fat_g: number;
+  fiber_g: number;
+
   serving_size: string;
   confidence: number;
 }
 
-/* =========================================================
-   CONSTANTS
-========================================================= */
+/* ============================================================
+   MEAL TYPES
+============================================================ */
+
+const ALLOWED_MEAL_TYPES = [
+  "breakfast",
+  "lunch",
+  "before_workout",
+  "snack",
+  "after_workout",
+  "dinner",
+] as const;
+
+type MealType =
+  (typeof ALLOWED_MEAL_TYPES)[number];
+
+/* ============================================================
+   MIME TYPES
+============================================================ */
 
 const ALLOWED_MIME_TYPES = [
   "image/jpeg",
   "image/png",
   "image/webp",
-];
-
-const ALLOWED_MEAL_TYPES = [
-  "breakfast",
-  "lunch",
-  "snack",
-  "dinner",
-];
+] as const;
 
 /*
-  Gemini inline image requests should stay comfortably
-  below the API's total request-size limit.
+ * Base64 request limit.
+ *
+ * Your ScanPage already compresses images before upload.
+ * This provides an additional server-side safety limit.
+ */
+const MAX_BASE64_LENGTH =
+  14 * 1024 * 1024;
 
-  We allow approximately 10 MB of Base64 data here.
-*/
-const MAX_BASE64_LENGTH = 14 * 1024 * 1024;
+/* ============================================================
+   TYPE GUARDS
+============================================================ */
 
-/* =========================================================
-   HELPERS
-========================================================= */
+function isMealType(
+  value: string
+): value is MealType {
+  return (
+    ALLOWED_MEAL_TYPES.includes(
+      value as MealType
+    )
+  );
+}
 
-function isValidDate(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+function isMimeType(
+  value: string
+): boolean {
+  return (
+    ALLOWED_MIME_TYPES.includes(
+      value as (typeof ALLOWED_MIME_TYPES)[number]
+    )
+  );
+}
+
+/* ============================================================
+   DATE VALIDATION
+============================================================ */
+
+function isValidDate(
+  value: string
+): boolean {
+  /*
+   * Expected:
+   *
+   * YYYY-MM-DD
+   */
+
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(
+      value
+    )
+  ) {
     return false;
   }
 
-  const date = new Date(`${value}T00:00:00`);
+  const date =
+    new Date(
+      `${value}T00:00:00`
+    );
 
-  return !Number.isNaN(date.getTime());
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return false;
+  }
+
+  /*
+   * Make sure JavaScript didn't
+   * normalize an invalid date.
+   */
+
+  const year =
+    date.getFullYear();
+
+  const month =
+    String(
+      date.getMonth() + 1
+    ).padStart(2, "0");
+
+  const day =
+    String(
+      date.getDate()
+    ).padStart(2, "0");
+
+  return (
+    `${year}-${month}-${day}` ===
+    value
+  );
 }
 
-/* ---------------------------------------------------------
-   Remove data:image/...;base64, prefix if present
---------------------------------------------------------- */
+/* ============================================================
+   TODAY - SERVER DATE
+============================================================ */
 
-function cleanBase64(image: string): string {
-  if (image.startsWith("data:")) {
-    const commaIndex = image.indexOf(",");
+function getTodayServerSide(): string {
+  /*
+   * NutriTrack uses India time.
+   */
 
-    if (commaIndex === -1) {
+  return new Intl.DateTimeFormat(
+    "en-CA",
+    {
+      timeZone:
+        "Asia/Kolkata",
+    }
+  ).format(
+    new Date()
+  );
+}
+
+/* ============================================================
+   CLEAN BASE64
+============================================================ */
+
+function cleanBase64(
+  image: string
+): string {
+  /*
+   * Supports:
+   *
+   * abcdef....
+   *
+   * and:
+   *
+   * data:image/jpeg;base64,abcdef...
+   */
+
+  const trimmed =
+    image.trim();
+
+  if (
+    trimmed.startsWith(
+      "data:"
+    )
+  ) {
+    const commaIndex =
+      trimmed.indexOf(",");
+
+    if (
+      commaIndex === -1
+    ) {
       return "";
     }
 
-    return image.slice(commaIndex + 1);
+    return trimmed
+      .slice(
+        commaIndex + 1
+      )
+      .trim();
   }
 
-  return image;
+  return trimmed;
 }
 
-/* ---------------------------------------------------------
-   Safe number
---------------------------------------------------------- */
+/* ============================================================
+   SAFE NUMBER
+============================================================ */
 
 function safeNumber(
   value: unknown,
   fallback = 0
 ): number {
-  const number = Number(value);
+  const parsed =
+    Number(value);
 
-  if (!Number.isFinite(number)) {
+  if (
+    !Number.isFinite(
+      parsed
+    )
+  ) {
     return fallback;
   }
 
-  return number;
+  return parsed;
 }
 
-/* ---------------------------------------------------------
-   Clamp
---------------------------------------------------------- */
+/* ============================================================
+   CLAMP
+============================================================ */
 
 function clamp(
   value: number,
@@ -122,95 +261,195 @@ function clamp(
 ): number {
   return Math.min(
     max,
-    Math.max(min, value)
+    Math.max(
+      min,
+      value
+    )
   );
 }
 
-/* ---------------------------------------------------------
-   Normalize Gemini response
---------------------------------------------------------- */
+/* ============================================================
+   NORMALIZE GEMINI RESULT
+============================================================ */
 
 function normalizeResult(
-  result: any,
-  requestedMealType: string
+  result: unknown,
+  requestedMealType: MealType
 ): GeminiMealResult {
-  let mealType = String(
-    result?.meal_type || ""
-  )
-    .trim()
-    .toLowerCase();
+  const data =
+    result &&
+    typeof result ===
+      "object"
+      ? (result as Record<
+          string,
+          unknown
+        >)
+      : {};
 
-  if (
-    !ALLOWED_MEAL_TYPES.includes(mealType)
-  ) {
-    mealType = ALLOWED_MEAL_TYPES.includes(
-      requestedMealType
+  /*
+   * ----------------------------------------------------------
+   * MEAL TYPE
+   * ----------------------------------------------------------
+   */
+
+  const rawMealType =
+    String(
+      data.meal_type || ""
     )
-      ? requestedMealType
-      : "snack";
-  }
+      .trim()
+      .toLowerCase();
+
+  const mealType: MealType =
+    isMealType(
+      rawMealType
+    )
+      ? rawMealType
+      : requestedMealType;
+
+  /*
+   * ----------------------------------------------------------
+   * NAME
+   * ----------------------------------------------------------
+   */
+
+  const name =
+    String(
+      data.name ||
+        "Meal"
+    ).trim();
+
+  /*
+   * ----------------------------------------------------------
+   * DESCRIPTION
+   * ----------------------------------------------------------
+   */
+
+  const description =
+    String(
+      data.description ||
+        "Meal analyzed from the uploaded image."
+    ).trim();
+
+  /*
+   * ----------------------------------------------------------
+   * NUTRITION
+   * ----------------------------------------------------------
+   */
+
+  const calories =
+    Math.max(
+      0,
+      safeNumber(
+        data.calories
+      )
+    );
+
+  const protein =
+    Math.max(
+      0,
+      safeNumber(
+        data.protein_g
+      )
+    );
+
+  const carbs =
+    Math.max(
+      0,
+      safeNumber(
+        data.carbs_g
+      )
+    );
+
+  const fat =
+    Math.max(
+      0,
+      safeNumber(
+        data.fat_g
+      )
+    );
+
+  const fiber =
+    Math.max(
+      0,
+      safeNumber(
+        data.fiber_g
+      )
+    );
+
+  /*
+   * ----------------------------------------------------------
+   * SERVING SIZE
+   * ----------------------------------------------------------
+   */
+
+  const servingSize =
+    String(
+      data.serving_size ||
+        ""
+    ).trim();
+
+  /*
+   * ----------------------------------------------------------
+   * CONFIDENCE
+   * ----------------------------------------------------------
+   */
+
+  const confidence =
+    clamp(
+      safeNumber(
+        data.confidence
+      ),
+      0,
+      1
+    );
 
   return {
     meal_type:
-      mealType as GeminiMealResult["meal_type"],
+      mealType,
 
     name:
-      String(
-        result?.name || "Meal"
-      ).trim(),
+      name || "Meal",
 
     description:
-      String(
-        result?.description ||
-          "Meal analyzed from the uploaded image."
-      ).trim(),
+      description ||
+      "Meal analyzed from the uploaded image.",
 
-    calories: Math.max(
-      0,
-      safeNumber(result?.calories)
-    ),
+    calories,
 
-    protein_g: Math.max(
-      0,
-      safeNumber(result?.protein_g)
-    ),
+    protein_g:
+      protein,
 
-    carbs_g: Math.max(
-      0,
-      safeNumber(result?.carbs_g)
-    ),
+    carbs_g:
+      carbs,
 
-    fat_g: Math.max(
-      0,
-      safeNumber(result?.fat_g)
-    ),
+    fat_g:
+      fat,
+
+    fiber_g:
+      fiber,
 
     serving_size:
-      String(
-        result?.serving_size || ""
-      ).trim(),
+      servingSize,
 
-    confidence: clamp(
-      safeNumber(result?.confidence),
-      0,
-      1
-    ),
+    confidence,
   };
 }
 
-/* =========================================================
+/* ============================================================
    POST
-========================================================= */
+============================================================ */
 
 export async function POST(
   request: Request
 ) {
   try {
-    /* =====================================================
-       1. CHECK GEMINI API KEY
-    ===================================================== */
+    /* ========================================================
+       1. CHECK GEMINI KEY
+    ======================================================== */
 
-    if (!apiKey) {
+    if (
+      !process.env.GEMINI_API_KEY
+    ) {
       console.error(
         "GEMINI_API_KEY is missing."
       );
@@ -226,16 +465,19 @@ export async function POST(
       );
     }
 
-    /* =====================================================
+    /* ========================================================
        2. AUTHENTICATION
-    ===================================================== */
+    ======================================================== */
 
     const supabase =
       await createClient();
 
     const {
-      data: { user },
-      error: authError,
+      data: {
+        user,
+      },
+      error:
+        authError,
     } =
       await supabase.auth.getUser();
 
@@ -258,14 +500,15 @@ export async function POST(
       );
     }
 
-    /* =====================================================
-       3. READ REQUEST BODY
-    ===================================================== */
+    /* ========================================================
+       3. READ REQUEST JSON
+    ======================================================== */
 
     let body: AnalyzeRequest;
 
     try {
-      body = await request.json();
+      body =
+        await request.json();
     } catch (error) {
       console.error(
         "Invalid JSON request:",
@@ -291,13 +534,14 @@ export async function POST(
       meal_date,
     } = body;
 
-    /* =====================================================
-       4. IMAGE REQUIRED
-    ===================================================== */
+    /* ========================================================
+       4. IMAGE VALIDATION
+    ======================================================== */
 
     if (
       !image ||
-      typeof image !== "string"
+      typeof image !==
+        "string"
     ) {
       return NextResponse.json(
         {
@@ -310,13 +554,14 @@ export async function POST(
       );
     }
 
-    /* =====================================================
-       5. MIME TYPE
-    ===================================================== */
+    /* ========================================================
+       5. MIME TYPE VALIDATION
+    ======================================================== */
 
     if (
       !mimeType ||
-      typeof mimeType !== "string"
+      typeof mimeType !==
+        "string"
     ) {
       return NextResponse.json(
         {
@@ -330,7 +575,7 @@ export async function POST(
     }
 
     if (
-      !ALLOWED_MIME_TYPES.includes(
+      !isMimeType(
         mimeType
       )
     ) {
@@ -345,12 +590,14 @@ export async function POST(
       );
     }
 
-    /* =====================================================
+    /* ========================================================
        6. CLEAN BASE64
-    ===================================================== */
+    ======================================================== */
 
     const base64Image =
-      cleanBase64(image);
+      cleanBase64(
+        image
+      );
 
     if (!base64Image) {
       return NextResponse.json(
@@ -364,9 +611,9 @@ export async function POST(
       );
     }
 
-    /* =====================================================
-       7. IMAGE SIZE
-    ===================================================== */
+    /* ========================================================
+       7. IMAGE SIZE VALIDATION
+    ======================================================== */
 
     if (
       base64Image.length >
@@ -375,7 +622,7 @@ export async function POST(
       return NextResponse.json(
         {
           error:
-            "Image is too large. Please choose a smaller photo.",
+            "Image is too large. Please upload a smaller image.",
         },
         {
           status: 413,
@@ -383,16 +630,19 @@ export async function POST(
       );
     }
 
-    /* =====================================================
+    /* ========================================================
        8. DESCRIPTION
-    ===================================================== */
+    ======================================================== */
 
     const userDescription =
-      typeof description === "string"
+      typeof description ===
+        "string"
         ? description.trim()
         : "";
 
-    if (!userDescription) {
+    if (
+      !userDescription
+    ) {
       return NextResponse.json(
         {
           error:
@@ -404,43 +654,52 @@ export async function POST(
       );
     }
 
-    /* =====================================================
+    /* ========================================================
        9. MEAL TYPE
-    ===================================================== */
+    ======================================================== */
 
-    const requestedMealType =
-      typeof meal_type === "string"
+    const rawMealType =
+      typeof meal_type ===
+        "string"
         ? meal_type
             .trim()
             .toLowerCase()
-        : "breakfast";
+        : "";
 
-    const safeMealType =
-      ALLOWED_MEAL_TYPES.includes(
-        requestedMealType
+    /*
+     * If the selected value is
+     * invalid, use breakfast.
+     *
+     * This is also TypeScript-safe.
+     */
+
+    const safeMealType: MealType =
+      isMealType(
+        rawMealType
       )
-        ? requestedMealType
+        ? rawMealType
         : "breakfast";
 
-    /* =====================================================
+    /* ========================================================
        10. MEAL DATE
-    ===================================================== */
+    ======================================================== */
 
-    const requestedMealDate =
-      typeof meal_date === "string"
+    const rawMealDate =
+      typeof meal_date ===
+        "string"
         ? meal_date.trim()
         : "";
 
     if (
-      requestedMealDate &&
+      rawMealDate &&
       !isValidDate(
-        requestedMealDate
+        rawMealDate
       )
     ) {
       return NextResponse.json(
         {
           error:
-            "Invalid meal date.",
+            "Invalid meal date. Use YYYY-MM-DD.",
         },
         {
           status: 400,
@@ -448,184 +707,174 @@ export async function POST(
       );
     }
 
-    /* =====================================================
-       11. PROMPT
-    ===================================================== */
+    const safeMealDate =
+      rawMealDate ||
+      getTodayServerSide();
+
+    /* ========================================================
+       11. GEMINI PROMPT
+    ======================================================== */
 
     const prompt = `
-You are the nutrition estimation assistant
-for NutriTrack AI.
+You are a nutrition estimation assistant for NutriTrack AI.
 
 Analyze the provided meal image carefully.
 
-USER SELECTED MEAL TYPE:
-${safeMealType}
+The user selected meal type:
+"${safeMealType}"
 
-USER SELECTED MEAL DATE:
-${requestedMealDate || "Not provided"}
+The user selected meal date:
+"${safeMealDate}"
 
-USER DESCRIPTION:
-${userDescription}
+The user's description is:
 
-Your task is to estimate the nutrition
-for the visible food and the serving
-described by the user.
+"${userDescription}"
+
+Your job is to estimate the nutrition for the visible food and the serving described by the user.
 
 IMPORTANT RULES:
 
-1. Carefully inspect the image.
-2. Use the user's description to improve
-   the nutrition estimate.
-3. Do not invent ingredients that are
-   clearly not visible.
-4. If quantity is uncertain, estimate
-   a reasonable serving size.
-5. Nutrition values are estimates.
+1. Analyze the image carefully.
+2. Use the user's description to improve the estimate.
+3. Do not invent ingredients that are clearly not visible.
+4. If exact quantity is unknown, provide a reasonable estimated serving.
+5. Nutrition values are estimates only.
 6. Do not provide medical advice.
 7. Return ONLY valid JSON.
 8. Do not use markdown.
 9. Do not use code fences.
-10. Do not include explanations outside JSON.
+10. Do not add explanations outside the JSON.
+11. Fiber must always be included.
+12. All nutrition values must be numbers.
+13. Do not return null for nutrition values.
 
 Return exactly this structure:
 
 {
   "meal_type": "${safeMealType}",
   "name": "short meal name",
-  "description": "brief description of visible food",
+  "description": "brief description of the visible meal",
   "calories": 0,
   "protein_g": 0,
   "carbs_g": 0,
   "fat_g": 0,
+  "fiber_g": 0,
   "serving_size": "estimated serving size",
   "confidence": 0.0
 }
 
-FIELD RULES:
+Rules for the fields:
 
-meal_type:
-Must be exactly one of:
-breakfast
-lunch
-snack
-dinner
+- meal_type must be exactly one of:
 
-name:
-Short useful name of the meal.
+  breakfast
+  lunch
+  before_workout
+  snack
+  after_workout
+  dinner
 
-description:
-Brief description of the visible food.
+- Prefer the user's selected meal type unless the image/context clearly indicates another type.
 
-calories:
-Number only.
+- name must be a short useful meal name.
 
-protein_g:
-Number only.
+- description should briefly describe the visible meal.
 
-carbs_g:
-Number only.
+- calories must be a non-negative number.
 
-fat_g:
-Number only.
+- protein_g must be a non-negative number.
 
-serving_size:
-Estimated serving size.
+- carbs_g must be a non-negative number.
 
-confidence:
-Decimal between 0 and 1.
+- fat_g must be a non-negative number.
 
-Do not return:
+- fiber_g must be a non-negative number.
 
-meal_date
-extra fields
-markdown
-comments
-explanations
+- serving_size should describe the estimated serving.
+
+- confidence must be a decimal number between 0 and 1.
+
+Do not include:
+
+- meal_date
+- markdown
+- extra fields
+- comments
+- explanations
 `;
 
-    /* =====================================================
-       12. GEMINI REQUEST
-    ===================================================== */
+    /* ========================================================
+       12. CALL GEMINI
+    ======================================================== */
 
     let response;
 
     try {
       response =
-        await ai.models.generateContent({
-          model: "gemini-3.6-flash",
+        await ai.models.generateContent(
+          {
+            model:
+              "gemini-3.6-flash",
 
-          contents: [
-            {
-              inlineData: {
-                mimeType,
-                data: base64Image,
+            contents: [
+              {
+                inlineData: {
+                  mimeType:
+                    mimeType,
+
+                  data:
+                    base64Image,
+                },
               },
+              {
+                text:
+                  prompt,
+              },
+            ],
+
+            config: {
+              responseMimeType:
+                "application/json",
             },
-            {
-              text: prompt,
-            },
-          ],
-
-          config: {
-            responseMimeType:
-              "application/json",
-          },
-        });
-    } catch (geminiError: any) {
-      /*
-       IMPORTANT:
-       This is the ONLY Gemini catch block.
-       Your previous file had a second catch
-       immediately after this one.
-      */
-
+          }
+        );
+    } catch (
+      geminiError: unknown
+    ) {
       console.error(
-        "===================================="
+        "========== GEMINI ERROR =========="
       );
 
       console.error(
-        "GEMINI API ERROR"
-      );
-
-      console.error(
-        "Message:",
-        geminiError?.message
-      );
-
-      console.error(
-        "Name:",
-        geminiError?.name
-      );
-
-      console.error(
-        "Status:",
-        geminiError?.status
-      );
-
-      console.error(
-        "Code:",
-        geminiError?.code
-      );
-
-      console.error(
-        "Details:",
-        geminiError?.details
-      );
-
-      console.error(
-        "Full error:",
         geminiError
       );
 
+      if (
+        geminiError instanceof
+        Error
+      ) {
+        console.error(
+          "Message:",
+          geminiError.message
+        );
+
+        console.error(
+          "Stack:",
+          geminiError.stack
+        );
+      }
+
       console.error(
-        "===================================="
+        "=================================="
       );
 
       return NextResponse.json(
         {
           error:
-            geminiError?.message ||
-            "Gemini could not analyze the meal.",
+            geminiError instanceof
+            Error
+              ? geminiError.message
+              : "Gemini could not analyze the meal. Please try again.",
         },
         {
           status: 502,
@@ -633,9 +882,9 @@ explanations
       );
     }
 
-    /* =====================================================
-       13. GEMINI TEXT
-    ===================================================== */
+    /* ========================================================
+       13. GET GEMINI TEXT
+    ======================================================== */
 
     const text =
       response.text;
@@ -645,13 +894,13 @@ explanations
       !text.trim()
     ) {
       console.error(
-        "Gemini returned an empty response."
+        "Gemini returned empty response."
       );
 
       return NextResponse.json(
         {
           error:
-            "Gemini returned an empty response. Please try again.",
+            "AI returned an empty response. Please try again.",
         },
         {
           status: 502,
@@ -659,29 +908,56 @@ explanations
       );
     }
 
-    console.log(
-      "Gemini raw response:",
-      text
-    );
-
-    /* =====================================================
+    /* ========================================================
        14. PARSE JSON
-    ===================================================== */
+    ======================================================== */
 
-    let parsed: any;
+    let parsed: unknown;
 
     try {
+      let cleanText =
+        text.trim();
+
+      /*
+       * Safety:
+       * Gemini should return JSON because
+       * responseMimeType is JSON.
+       *
+       * But remove accidental code fences
+       * if they appear.
+       */
+
+      if (
+        cleanText.startsWith(
+          "```"
+        )
+      ) {
+        cleanText =
+          cleanText
+            .replace(
+              /^```(?:json)?/i,
+              ""
+            )
+            .replace(
+              /```$/i,
+              ""
+            )
+            .trim();
+      }
+
       parsed =
         JSON.parse(
-          text.trim()
+          cleanText
         );
-    } catch (parseError) {
+    } catch (
+      parseError
+    ) {
       console.error(
         "Gemini returned invalid JSON."
       );
 
       console.error(
-        "Raw Gemini response:",
+        "Gemini text:",
         text
       );
 
@@ -701,9 +977,9 @@ explanations
       );
     }
 
-    /* =====================================================
+    /* ========================================================
        15. NORMALIZE RESULT
-    ===================================================== */
+    ======================================================== */
 
     const normalized =
       normalizeResult(
@@ -711,62 +987,84 @@ explanations
         safeMealType
       );
 
-    /* =====================================================
+    /* ========================================================
        16. FINAL RESULT
-    ===================================================== */
+    ======================================================== */
 
     const finalResult = {
-      ...normalized,
+      meal_type:
+        normalized.meal_type,
 
       meal_date:
-        requestedMealDate ||
-        getTodayServerSide(),
+        safeMealDate,
 
-      ai_analyzed: true,
+      name:
+        normalized.name,
 
-      ai_confidence:
+      description:
+        normalized.description,
+
+      calories:
+        normalized.calories,
+
+      protein_g:
+        normalized.protein_g,
+
+      carbs_g:
+        normalized.carbs_g,
+
+      fat_g:
+        normalized.fat_g,
+
+      fiber_g:
+        normalized.fiber_g,
+
+      serving_size:
+        normalized.serving_size,
+
+      confidence:
         normalized.confidence,
     };
 
-    /* =====================================================
+    /* ========================================================
        17. LOG SUCCESS
-    ===================================================== */
+    ======================================================== */
 
     console.log(
-      "===================================="
+      "Meal analysis successful:",
+      {
+        userId:
+          user.id,
+
+        mealType:
+          finalResult.meal_type,
+
+        mealDate:
+          finalResult.meal_date,
+
+        name:
+          finalResult.name,
+
+        calories:
+          finalResult.calories,
+
+        protein:
+          finalResult.protein_g,
+
+        carbs:
+          finalResult.carbs_g,
+
+        fat:
+          finalResult.fat_g,
+
+        fiber:
+          finalResult.fiber_g,
+      }
     );
 
-    console.log(
-      "MEAL ANALYSIS SUCCESS"
-    );
-
-    console.log({
-      userId: user.id,
-      mealType:
-        finalResult.meal_type,
-      mealDate:
-        finalResult.meal_date,
-      name:
-        finalResult.name,
-      calories:
-        finalResult.calories,
-      protein:
-        finalResult.protein_g,
-      carbs:
-        finalResult.carbs_g,
-      fat:
-        finalResult.fat_g,
-      confidence:
-        finalResult.confidence,
-    });
-
-    console.log(
-      "===================================="
-    );
-
-    /* =====================================================
+    /* ========================================================
        18. RETURN
-    ===================================================== */
+    ======================================================== */
 
     return NextResponse.json(
       finalResult,
@@ -774,37 +1072,19 @@ explanations
         status: 200,
       }
     );
-  } catch (error: any) {
-    /* =====================================================
+  } catch (error) {
+    /* ========================================================
        GLOBAL ERROR
-    ===================================================== */
+    ======================================================== */
 
     console.error(
-      "===================================="
-    );
-
-    console.error(
-      "MEAL ANALYSIS ROUTE ERROR"
-    );
-
-    console.error(
-      "Message:",
-      error?.message
-    );
-
-    console.error(
-      "Full error:",
+      "Meal analysis route error:",
       error
-    );
-
-    console.error(
-      "===================================="
     );
 
     return NextResponse.json(
       {
         error:
-          error?.message ||
           "Unable to analyze the meal right now. Please try again.",
       },
       {
@@ -812,28 +1092,4 @@ explanations
       }
     );
   }
-}
-
-/* =========================================================
-   SERVER DATE
-========================================================= */
-
-function getTodayServerSide(): string {
-  const now =
-    new Date();
-
-  const year =
-    now.getFullYear();
-
-  const month =
-    String(
-      now.getMonth() + 1
-    ).padStart(2, "0");
-
-  const day =
-    String(
-      now.getDate()
-    ).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
 }

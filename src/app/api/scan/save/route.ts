@@ -4,7 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 const ALLOWED_MEAL_TYPES = [
   "breakfast",
   "lunch",
+  "before_workout",
   "snack",
+  "after_workout",
   "dinner",
 ] as const;
 
@@ -20,89 +22,61 @@ interface SaveMealRequest {
   protein_g?: number | string;
   carbs_g?: number | string;
   fat_g?: number | string;
+  fiber_g?: number | string;
   serving_size?: string;
   ai_analyzed?: boolean;
   ai_confidence?: number | string;
 }
 
-/* =========================================
-   HELPERS
-========================================= */
-
-function numberValue(
-  value: unknown
-): number {
+function numberValue(value: unknown): number {
   const parsed = Number(value);
 
-  if (
-    !Number.isFinite(parsed) ||
-    parsed < 0
-  ) {
+  if (!Number.isFinite(parsed) || parsed < 0) {
     return 0;
   }
 
   return parsed;
 }
 
-function confidenceValue(
-  value: unknown
-): number {
+function confidenceValue(value: unknown): number {
   const parsed = Number(value);
 
   if (!Number.isFinite(parsed)) {
     return 0;
   }
 
-  return Math.min(
-    1,
-    Math.max(0, parsed)
-  );
+  return Math.min(1, Math.max(0, parsed));
 }
 
-function isValidDate(
-  value: string
-): boolean {
-  if (
-    !/^\d{4}-\d{2}-\d{2}$/.test(
-      value
-    )
-  ) {
+function isValidDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return false;
   }
 
+  const [year, month, day] =
+    value.split("-").map(Number);
+
   const date = new Date(
-    `${value}T00:00:00`
+    year,
+    month - 1,
+    day
   );
 
-  return !Number.isNaN(
-    date.getTime()
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
   );
 }
 
-/* =========================================
-   POST
-========================================= */
-
-export async function POST(
-  request: Request
-) {
+export async function POST(request: Request) {
   try {
-    /* =====================================
-       1. SUPABASE
-    ===================================== */
-
-    const supabase =
-      await createClient();
-
-    /* =====================================
-       2. AUTHENTICATION
-    ===================================== */
+    const supabase = await createClient();
 
     const {
       data: { user },
       error: authError,
-    } =
-      await supabase.auth.getUser();
+    } = await supabase.auth.getUser();
 
     if (authError) {
       console.error(
@@ -113,25 +87,15 @@ export async function POST(
 
     if (!user) {
       return NextResponse.json(
-        {
-          error:
-            "You must be logged in.",
-        },
-        {
-          status: 401,
-        }
+        { error: "You must be logged in." },
+        { status: 401 }
       );
     }
-
-    /* =====================================
-       3. READ REQUEST
-    ===================================== */
 
     let body: SaveMealRequest;
 
     try {
-      body =
-        await request.json();
+      body = await request.json();
     } catch (error) {
       console.error(
         "Invalid save meal JSON:",
@@ -139,13 +103,8 @@ export async function POST(
       );
 
       return NextResponse.json(
-        {
-          error:
-            "Invalid request body.",
-        },
-        {
-          status: 400,
-        }
+        { error: "Invalid request body." },
+        { status: 400 }
       );
     }
 
@@ -158,57 +117,37 @@ export async function POST(
       protein_g,
       carbs_g,
       fat_g,
+      fiber_g,
       serving_size,
       ai_analyzed,
       ai_confidence,
     } = body;
 
-    /* =====================================
-       4. VALIDATE DATE
-    ===================================== */
-
     if (
       !meal_date ||
-      typeof meal_date !==
-        "string"
+      typeof meal_date !== "string"
     ) {
       return NextResponse.json(
-        {
-          error:
-            "Meal date is required.",
-        },
-        {
-          status: 400,
-        }
+        { error: "Meal date is required." },
+        { status: 400 }
       );
     }
 
-    if (
-      !isValidDate(
-        meal_date
-      )
-    ) {
+    if (!isValidDate(meal_date)) {
       return NextResponse.json(
         {
           error:
             "Invalid meal date. Use YYYY-MM-DD.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
-    /* =====================================
-       5. VALIDATE MEAL TYPE
-    ===================================== */
-
-    const normalizedMealType =
-      String(
-        meal_type || ""
-      )
-        .trim()
-        .toLowerCase();
+    const normalizedMealType = String(
+      meal_type || ""
+    )
+      .trim()
+      .toLowerCase();
 
     if (
       !ALLOWED_MEAL_TYPES.includes(
@@ -218,165 +157,90 @@ export async function POST(
       return NextResponse.json(
         {
           error:
-            "Invalid meal type. Choose breakfast, lunch, snack or dinner.",
+            "Invalid meal type. Choose breakfast, lunch, before workout, snack, after workout or dinner.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
-    /* =====================================
-       6. VALIDATE NAME
-    ===================================== */
-
-    const mealName =
-      String(
-        name || ""
-      ).trim();
+    const mealName = String(
+      name || ""
+    ).trim();
 
     if (!mealName) {
       return NextResponse.json(
-        {
-          error:
-            "Meal name is required.",
-        },
-        {
-          status: 400,
-        }
+        { error: "Meal name is required." },
+        { status: 400 }
       );
     }
 
-    if (
-      mealName.length > 150
-    ) {
+    if (mealName.length > 150) {
       return NextResponse.json(
-        {
-          error:
-            "Meal name is too long.",
-        },
-        {
-          status: 400,
-        }
+        { error: "Meal name is too long." },
+        { status: 400 }
       );
     }
-
-    /* =====================================
-       7. CLEAN TEXT
-    ===================================== */
 
     const mealDescription =
       description
-        ? String(
-            description
-          ).trim()
+        ? String(description).trim()
         : null;
 
     const mealServingSize =
       serving_size
-        ? String(
-            serving_size
-          ).trim()
+        ? String(serving_size).trim()
         : null;
 
-    /* =====================================
-       8. NUTRITION VALUES
-    ===================================== */
+    const mealCalories = numberValue(
+      calories
+    );
 
-    const mealCalories =
-      numberValue(
-        calories
-      );
+    const mealProtein = numberValue(
+      protein_g
+    );
 
-    const mealProtein =
-      numberValue(
-        protein_g
-      );
+    const mealCarbs = numberValue(
+      carbs_g
+    );
 
-    const mealCarbs =
-      numberValue(
-        carbs_g
-      );
+    const mealFat = numberValue(fat_g);
 
-    const mealFat =
-      numberValue(
-        fat_g
-      );
+    const mealFiber = numberValue(
+      fiber_g
+    );
 
-    /* =====================================
-       9. AI DATA
-    ===================================== */
+    const wasAiAnalyzed = Boolean(
+      ai_analyzed
+    );
 
-    const wasAiAnalyzed =
-      Boolean(
-        ai_analyzed
-      );
+    const confidence = confidenceValue(
+      ai_confidence
+    );
 
-    const confidence =
-      confidenceValue(
-        ai_confidence
-      );
-
-    /* =====================================
-       10. INSERT MEAL
-       
-       IMPORTANT:
-       
-       We DO NOT save image_url.
-       
-       You specifically said that you
-       don't want meal photos stored
-       in the database.
-    ===================================== */
-
-    const { data, error } =
-      await supabase
-        .from("meals")
-        .insert({
-          user_id:
-            user.id,
-
-          meal_date:
-            meal_date,
-
-          meal_type:
-            normalizedMealType,
-
-          name:
-            mealName,
-
-          description:
-            mealDescription,
-
-          calories:
-            Math.round(
-              mealCalories
-            ),
-
-          protein_g:
-            mealProtein,
-
-          carbs_g:
-            mealCarbs,
-
-          fat_g:
-            mealFat,
-
-          serving_size:
-            mealServingSize,
-
-          ai_analyzed:
-            wasAiAnalyzed,
-
-          ai_confidence:
-            confidence,
-        })
-        .select()
-        .single();
-
-    /* =====================================
-       11. DATABASE ERROR
-    ===================================== */
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("meals")
+      .insert({
+        user_id: user.id,
+        meal_date,
+        meal_type: normalizedMealType,
+        name: mealName,
+        description: mealDescription,
+        calories: Math.round(
+          mealCalories
+        ),
+        protein_g: mealProtein,
+        carbs_g: mealCarbs,
+        fat_g: mealFat,
+        fiber_g: mealFiber,
+        serving_size: mealServingSize,
+        ai_analyzed: wasAiAnalyzed,
+        ai_confidence: confidence,
+      })
+      .select()
+      .single();
 
     if (error) {
       console.error(
@@ -394,50 +258,32 @@ export async function POST(
               ? error.message
               : undefined,
         },
-        {
-          status: 500,
-        }
+        { status: 500 }
       );
     }
-
-    /* =====================================
-       12. SUCCESS
-    ===================================== */
 
     console.log(
       "Meal saved successfully:",
       {
-        userId:
-          user.id,
-        mealId:
-          data.id,
-        mealDate:
-          data.meal_date,
-        mealType:
-          data.meal_type,
-        name:
-          data.name,
+        userId: user.id,
+        mealId: data.id,
+        mealDate: data.meal_date,
+        mealType: data.meal_type,
+        name: data.name,
+        fiber: data.fiber_g,
       }
     );
 
     return NextResponse.json(
       {
         success: true,
-
         message:
           "Meal added to your diary.",
-
         meal: data,
       },
-      {
-        status: 201,
-      }
+      { status: 201 }
     );
   } catch (error) {
-    /* =====================================
-       GLOBAL ERROR
-    ===================================== */
-
     console.error(
       "Save meal API error:",
       error
@@ -448,9 +294,7 @@ export async function POST(
         error:
           "Something went wrong while saving the meal.",
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }

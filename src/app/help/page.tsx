@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import ProtectedAppShell from "@/components/navigation/ProtectedAppShell";
-import AppShell from "@/components/navigation/AppShell";
 import HelpCenter from "./HelpCenter";
 
 export default async function HelpPage({

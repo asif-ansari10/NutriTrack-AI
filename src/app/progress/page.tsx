@@ -1,45 +1,3 @@
-// import ProgressPage from "@/components/progress/ProgressPage";
-// import { getProgressData } from "@/lib/progress/getProgressData";
-// import AppShell from "@/components/navigation/AppShell";
-
-// interface PageProps {
-//   searchParams: Promise<{
-//     month?: string;
-//   }>;
-// }
-
-// function getCurrentMonth() {
-//   const now = new Date();
-
-//   return `${now.getFullYear()}-${String(
-//     now.getMonth() + 1
-//   ).padStart(2, "0")}`;
-// }
-
-// export default async function ProgressRoute({
-//   searchParams,
-// }: PageProps) {
-//   const params = await searchParams;
-
-//   const month =
-//     params.month ||
-//     getCurrentMonth();
-
-//   const data =
-//     await getProgressData(month);
-
-//   return (
-//     <AppShell>
-//     <ProgressPage
-//       month={month}
-//       data={data}
-//     />
-//     </AppShell>
-//   );
-// }
-
-import { redirect } from "next/navigation";
-
 import ProgressPage from "@/components/progress/ProgressPage";
 import ProtectedAppShell from "@/components/navigation/ProtectedAppShell";
 import { createClient } from "@/lib/supabase/server";
@@ -64,11 +22,9 @@ export default async function ProgressRoute({
 }: PageProps) {
   const params = await searchParams;
 
-  /*
-   * =========================================================
-   * CHECK AUTH FIRST
-   * =========================================================
-   */
+  // =========================================================
+  // CHECK AUTH FIRST
+  // =========================================================
 
   const supabase = await createClient();
 
@@ -76,9 +32,10 @@ export default async function ProgressRoute({
     data: { user },
   } = await supabase.auth.getUser();
 
-  /*
-   * Not logged in
-   */
+  // =========================================================
+  // NOT LOGGED IN
+  // =========================================================
+
   if (!user) {
     return (
       <ProtectedAppShell>
@@ -95,7 +52,17 @@ export default async function ProgressRoute({
 
               <a
                 href="/login"
-                className="mt-6 inline-flex h-11 items-center justify-center rounded-xl bg-[#004e47] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#003f3a]"
+                className="
+                  mt-6 inline-flex h-11
+                  items-center justify-center
+                  rounded-xl
+                  bg-[#004e47]
+                  px-6
+                  text-sm font-semibold
+                  text-white
+                  transition-colors
+                  hover:bg-[#003f3a]
+                "
               >
                 Sign In
               </a>
@@ -106,22 +73,21 @@ export default async function ProgressRoute({
     );
   }
 
-  /*
-   * =========================================================
-   * GET CURRENT MONTH
-   * =========================================================
-   */
+  // =========================================================
+  // GET MONTH
+  // =========================================================
 
-  const month =
-    params.month || getCurrentMonth();
+  const month = params.month || getCurrentMonth();
 
-  /*
-   * =========================================================
-   * NOW IT IS SAFE TO LOAD PROGRESS DATA
-   * =========================================================
-   */
+  // =========================================================
+  // LOAD REAL PROGRESS DATA
+  // =========================================================
 
   const data = await getProgressData(month);
+
+  // =========================================================
+  // RENDER
+  // =========================================================
 
   return (
     <ProtectedAppShell>

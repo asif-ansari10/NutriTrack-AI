@@ -1,6 +1,7 @@
 "use client";
 
 interface WeightPoint {
+  id: string;
   date: string;
   weight: number;
 }
@@ -14,6 +15,10 @@ export default function WeightTrendChart({
   data,
   goal,
 }: Props) {
+  // =========================================================
+  // EMPTY STATE
+  // =========================================================
+
   if (!data.length) {
     return (
       <ChartCard
@@ -22,6 +27,10 @@ export default function WeightTrendChart({
       />
     );
   }
+
+  // =========================================================
+  // WEIGHT VALUES
+  // =========================================================
 
   const values = data.map(
     (item) => item.weight
@@ -37,11 +46,21 @@ export default function WeightTrendChart({
     goal
   );
 
-  const range =
-    Math.max(max - min, 1);
+  const range = Math.max(
+    max - min,
+    1
+  );
+
+  // =========================================================
+  // SVG DIMENSIONS
+  // =========================================================
 
   const width = 1000;
   const height = 320;
+
+  // =========================================================
+  // CREATE CHART POINTS
+  // =========================================================
 
   const points = data.map(
     (item, index) => {
@@ -59,12 +78,18 @@ export default function WeightTrendChart({
           (height - 30);
 
       return {
+        id: item.id,
         x,
         y,
-        ...item,
+        date: item.date,
+        weight: item.weight,
       };
     }
   );
+
+  // =========================================================
+  // LINE PATH
+  // =========================================================
 
   const path = points
     .map(
@@ -75,12 +100,25 @@ export default function WeightTrendChart({
     )
     .join(" ");
 
+  // =========================================================
+  // AREA PATH
+  // =========================================================
+
   const area = `${path} L ${width},${height} L 0,${height} Z`;
+
+  // =========================================================
+  // GOAL POSITION
+  // =========================================================
 
   const goalY =
     height -
-    ((goal - min) / range) *
+    ((goal - min) /
+      range) *
       (height - 30);
+
+  const showGoal =
+    goal >= min &&
+    goal <= max;
 
   return (
     <ChartCard
@@ -92,6 +130,8 @@ export default function WeightTrendChart({
           viewBox={`0 0 ${width} ${height}`}
           className="h-[280px] w-full"
           preserveAspectRatio="none"
+          role="img"
+          aria-label="Weight trend chart"
         >
           <defs>
             <linearGradient
@@ -115,7 +155,9 @@ export default function WeightTrendChart({
             </linearGradient>
           </defs>
 
-          {/* Grid */}
+          {/* =================================================
+              GRID
+          ================================================== */}
 
           {[0, 1, 2, 3, 4].map(
             (line) => {
@@ -125,7 +167,7 @@ export default function WeightTrendChart({
 
               return (
                 <line
-                  key={line}
+                  key={`grid-${line}`}
                   x1="0"
                   x2={width}
                   y1={y}
@@ -137,41 +179,46 @@ export default function WeightTrendChart({
             }
           )}
 
-          {/* Goal */}
+          {/* =================================================
+              GOAL LINE
+          ================================================== */}
 
-          {goal >= min &&
-            goal <= max && (
-              <>
-                <line
-                  x1="0"
-                  x2={width}
-                  y1={goalY}
-                  y2={goalY}
-                  stroke="#004e47"
-                  strokeDasharray="8 8"
-                  strokeWidth="2"
-                />
+          {showGoal && (
+            <>
+              <line
+                x1="0"
+                x2={width}
+                y1={goalY}
+                y2={goalY}
+                stroke="#004e47"
+                strokeDasharray="8 8"
+                strokeWidth="2"
+              />
 
-                <text
-                  x={width - 5}
-                  y={goalY - 8}
-                  textAnchor="end"
-                  fontSize="18"
-                  fill="#004e47"
-                >
-                  Goal {goal}kg
-                </text>
-              </>
-            )}
+              <text
+                x={width - 5}
+                y={goalY - 8}
+                textAnchor="end"
+                fontSize="18"
+                fill="#004e47"
+              >
+                Goal {goal}kg
+              </text>
+            </>
+          )}
 
-          {/* Area */}
+          {/* =================================================
+              AREA
+          ================================================== */}
 
           <path
             d={area}
             fill="url(#weightFill)"
           />
 
-          {/* Line */}
+          {/* =================================================
+              LINE
+          ================================================== */}
 
           <path
             d={path}
@@ -182,29 +229,41 @@ export default function WeightTrendChart({
             strokeLinejoin="round"
           />
 
-          {/* Points */}
+          {/* =================================================
+              POINTS
+          ================================================== */}
 
-          {points.map((point) => (
-            <circle
-              key={point.date}
-              cx={point.x}
-              cy={point.y}
-              r="7"
-              fill="white"
-              stroke="#004e47"
-              strokeWidth="4"
-            />
-          ))}
+          {points.map(
+            (point) => (
+              <circle
+                key={point.id}
+                cx={point.x}
+                cy={point.y}
+                r="7"
+                fill="white"
+                stroke="#004e47"
+                strokeWidth="4"
+              />
+            )
+          )}
         </svg>
+
+        {/* ===================================================
+            DATE RANGE
+        ==================================================== */}
 
         <div className="mt-2 flex justify-between text-[10px] text-[#6e7977]">
           <span>
-            {formatDate(data[0].date)}
+            {formatDate(
+              data[0].date
+            )}
           </span>
 
           <span>
             {formatDate(
-              data[data.length - 1].date
+              data[
+                data.length - 1
+              ].date
             )}
           </span>
         </div>
@@ -212,6 +271,10 @@ export default function WeightTrendChart({
     </ChartCard>
   );
 }
+
+// ===========================================================
+// DATE FORMAT
+// ===========================================================
 
 function formatDate(date: string) {
   return new Intl.DateTimeFormat(
@@ -222,6 +285,10 @@ function formatDate(date: string) {
     }
   ).format(new Date(date));
 }
+
+// ===========================================================
+// CHART CARD
+// ===========================================================
 
 function ChartCard({
   title,

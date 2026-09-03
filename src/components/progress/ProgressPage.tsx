@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import ProgressHeader from "./ProgressHeader";
 import ProgressSummary from "./ProgressSummary";
 import WeightTrendChart from "./WeightTrendChart";
@@ -8,6 +10,7 @@ import ProteinTrendChart from "./ProteinTrendChart";
 import CalorieBalanceChart from "./CalorieBalanceChart";
 import GoalProgressCard from "./GoalProgressCard";
 import MonthlyStats from "./MonthlyStats";
+import UpdateWeightModal from "./UpdateWeightModal";
 
 interface Props {
   month: string;
@@ -57,152 +60,209 @@ export default function ProgressPage({
     totals,
   } = data;
 
+  // =========================================================
+  // UPDATE WEIGHT MODAL
+  // =========================================================
+
+  const [showWeightModal, setShowWeightModal] =
+    useState(false);
+
+  // =========================================================
+  // WEIGHT CHART DATA
+  // =========================================================
+  // Keep the database ID so every chart point has a unique
+  // React key, even if multiple weights are recorded
+  // on the same date.
+  // =========================================================
+
   const weightChart = weightLogs.map(
     (item) => ({
-      date:
-        item.recorded_at.slice(
-          0,
-          10
-        ),
-      weight: Number(
-        item.weight_kg
-      ),
+      id: item.id,
+      date: item.recorded_at.slice(0, 10),
+      weight: Number(item.weight_kg),
     })
   );
 
   return (
-    <main className="min-h-screen bg-[#f8f9fa]">
+    <>
+      <main className="min-h-screen bg-[#f8f9fa]">
+        <div className="mx-auto w-full max-w-7xl px-4 py-6 pb-28 sm:px-6 md:px-8 md:py-8 md:pb-10">
 
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 pb-28 sm:px-6 md:px-8 md:py-8 md:pb-10">
+          {/* =================================================
+              HEADER
+          ================================================= */}
 
-        {/* HEADER */}
-
-        <ProgressHeader
-          month={month}
-        />
-
-        {/* SUMMARY */}
-
-        <section className="mt-6">
-          <ProgressSummary
-            currentWeight={
-              profile.currentWeight
-            }
-            weightChange={
-              totals.weightChange
-            }
-            averageCalories={
-              totals.averageCalories
-            }
-            averageProtein={
-              totals.averageProtein
-            }
-            calorieTarget={
-              profile.dailyCalorieTarget
-            }
-            proteinTarget={
-              profile.proteinTarget
+          <ProgressHeader
+            month={month}
+            onUpdateWeight={() =>
+              setShowWeightModal(true)
             }
           />
-        </section>
 
-        {/* MAIN CHARTS */}
+          {/* =================================================
+              SUMMARY
+          ================================================= */}
 
-        <section className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-12">
-
-          <div className="xl:col-span-8">
-            <WeightTrendChart
-              data={weightChart}
-              goal={
-                profile.targetWeight
-              }
-            />
-          </div>
-
-          <div className="xl:col-span-4">
-            <GoalProgressCard
-              startWeight={
-                totals.firstWeight
-              }
+          <section className="mt-6">
+            <ProgressSummary
               currentWeight={
                 profile.currentWeight
               }
-              targetWeight={
-                profile.targetWeight
+              weightChange={
+                totals.weightChange
               }
-              percentage={
-                totals.goalPercentage
+              averageCalories={
+                totals.averageCalories
               }
-              remaining={
-                totals.remaining
+              averageProtein={
+                totals.averageProtein
+              }
+              calorieTarget={
+                profile.dailyCalorieTarget
+              }
+              proteinTarget={
+                profile.proteinTarget
               }
             />
-          </div>
+          </section>
 
-        </section>
+          {/* =================================================
+              MAIN CHARTS
+          ================================================= */}
 
-        {/* NUTRITION CHARTS */}
+          <section className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-12">
 
-        <section className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {/* =================================================
+                WEIGHT TREND
+            ================================================= */}
 
-          <CalorieIntakeChart
-            data={daily.map(
-              (item) => ({
-                date: item.date,
-                calories:
-                  item.calories,
-              })
-            )}
-            target={
-              profile.dailyCalorieTarget
-            }
-          />
+            <div className="xl:col-span-8">
+              <WeightTrendChart
+                data={weightChart}
+                goal={
+                  profile.targetWeight
+                }
+              />
+            </div>
 
-          <ProteinTrendChart
-            data={daily.map(
-              (item) => ({
-                date: item.date,
-                protein:
-                  item.protein,
-              })
-            )}
-            target={
-              profile.proteinTarget
-            }
-          />
+            {/* =================================================
+                GOAL PROGRESS
+            ================================================= */}
 
-          <CalorieBalanceChart
-            data={daily.map(
-              (item) => ({
-                date: item.date,
-                calories:
-                  item.calories,
-              })
-            )}
-            target={
-              profile.dailyCalorieTarget
-            }
-          />
+            <div className="xl:col-span-4">
+              <GoalProgressCard
+                startWeight={
+                  totals.firstWeight
+                }
+                currentWeight={
+                  profile.currentWeight
+                }
+                targetWeight={
+                  profile.targetWeight
+                }
+                percentage={
+                  totals.goalPercentage
+                }
+                remaining={
+                  totals.remaining
+                }
+              />
+            </div>
+          </section>
 
-          <MonthlyStats
-            averageCalories={
-              totals.averageCalories
-            }
-            averageProtein={
-              totals.averageProtein
-            }
-            loggedDays={
-              totals.loggedDays
-            }
-            weightChange={
-              totals.weightChange
-            }
-          />
+          {/* =================================================
+              NUTRITION CHARTS
+          ================================================= */}
 
-        </section>
+          <section className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
 
-      </div>
+            {/* =================================================
+                CALORIE INTAKE
+            ================================================= */}
 
-    </main>
+            <CalorieIntakeChart
+              data={daily.map(
+                (item) => ({
+                  date: item.date,
+                  calories:
+                    item.calories,
+                })
+              )}
+              target={
+                profile.dailyCalorieTarget
+              }
+            />
+
+            {/* =================================================
+                PROTEIN
+            ================================================= */}
+
+            <ProteinTrendChart
+              data={daily.map(
+                (item) => ({
+                  date: item.date,
+                  protein:
+                    item.protein,
+                })
+              )}
+              target={
+                profile.proteinTarget
+              }
+            />
+
+            {/* =================================================
+                CALORIE BALANCE
+            ================================================= */}
+
+            <CalorieBalanceChart
+              data={daily.map(
+                (item) => ({
+                  date: item.date,
+                  calories:
+                    item.calories,
+                })
+              )}
+              target={
+                profile.dailyCalorieTarget
+              }
+            />
+
+            {/* =================================================
+                MONTHLY STATS
+            ================================================= */}
+
+            <MonthlyStats
+              averageCalories={
+                totals.averageCalories
+              }
+              averageProtein={
+                totals.averageProtein
+              }
+              loggedDays={
+                totals.loggedDays
+              }
+              weightChange={
+                totals.weightChange
+              }
+            />
+          </section>
+        </div>
+      </main>
+
+      {/* =====================================================
+          UPDATE WEIGHT MODAL
+      ====================================================== */}
+
+      {showWeightModal && (
+        <UpdateWeightModal
+          currentWeight={
+            profile.currentWeight
+          }
+          onClose={() =>
+            setShowWeightModal(false)
+          }
+        />
+      )}
+    </>
   );
 }
