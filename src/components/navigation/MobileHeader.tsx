@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   Brain,
   CircleHelp,
+    User,
 } from "lucide-react";
 
 export default function MobileHeader() {
@@ -78,31 +79,31 @@ export default function MobileHeader() {
 
       <div className="flex items-center gap-1">
 
-        {/* ====================================================
-            AI COACH
-        ==================================================== */}
+{/* ====================================================
+    PROFILE
+==================================================== */}
 
-        <Link
-          href="/coach"
-          prefetch
-          aria-label="AI Coach"
-          className="
-            flex h-11 w-11
-            items-center justify-center
-            rounded-full
-            text-[#004e47]
-            transition-colors
-            duration-150
-            hover:bg-[#e7f8f5]
-            hover:text-[#005049]
-            active:scale-95
-          "
-        >
-          <Brain
-            size={23}
-            strokeWidth={2}
-          />
-        </Link>
+<Link
+  href="/profile"
+  prefetch
+  aria-label="Profile"
+  className="
+    flex h-11 w-11
+    items-center justify-center
+    rounded-full
+    text-[#004e47]
+    transition-colors
+    duration-150
+    hover:bg-[#e7f8f5]
+    hover:text-[#005049]
+    active:scale-95
+  "
+>
+  <User
+    size={23}
+    strokeWidth={2}
+  />
+</Link>
 
         {/* ====================================================
             HELP
