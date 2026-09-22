@@ -1,8 +1,377 @@
+// "use client";
+
+// import {
+//   useEffect,
+//   useState,
+//   useTransition,
+// } from "react";
+
+// import {
+//   Check,
+//   Dumbbell,
+//   Loader2,
+//   X,
+// } from "lucide-react";
+
+// import { useRouter } from "next/navigation";
+
+// import {
+//   addActivity,
+// } from "@/app/diary/actions";
+
+// interface Props {
+//   open: boolean;
+//   onClose: () => void;
+// }
+
+// export default function AddActivityModal({
+//   open,
+//   onClose,
+// }: Props) {
+//   const router = useRouter();
+
+//   const [isPending, startTransition] =
+//     useTransition();
+
+//   const [error, setError] =
+//     useState("");
+
+//   /*
+//    * Clear old error whenever modal opens.
+//    */
+//   useEffect(() => {
+//     if (open) {
+//       setError("");
+//     }
+//   }, [open]);
+
+//   /*
+//    * Do not render when closed.
+//    */
+//   if (!open) {
+//     return null;
+//   }
+
+//   const handleSubmit = (
+//     event: React.FormEvent<HTMLFormElement>
+//   ) => {
+//     event.preventDefault();
+
+//     if (isPending) {
+//       return;
+//     }
+
+//     setError("");
+
+//     const formData = new FormData(
+//       event.currentTarget
+//     );
+
+//     startTransition(async () => {
+//       const result = await addActivity(formData);
+
+//       if (!result.success) {
+//         setError(
+//           result.error ||
+//             "Unable to add activity."
+//         );
+
+//         return;
+//       }
+
+//       /*
+//        * Close immediately after successful insert.
+//        */
+//       onClose();
+
+//       /*
+//        * Refresh Server Components/data without
+//        * doing a browser page reload.
+//        */
+//       router.refresh();
+//     });
+//   };
+
+//   return (
+//     <div
+//       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 p-4"
+//       onMouseDown={(event) => {
+//         if (
+//           event.target === event.currentTarget &&
+//           !isPending
+//         ) {
+//           onClose();
+//         }
+//       }}
+//     >
+//       {/* MODAL */}
+//       <div
+//         role="dialog"
+//         aria-modal="true"
+//         aria-labelledby="add-activity-title"
+//         className="flex w-full max-w-lg flex-col overflow-hidden rounded-[24px] bg-white shadow-2xl"
+//         style={{
+//           maxHeight:
+//             "calc(100dvh - 32px)",
+//         }}
+//       >
+//         {/* HEADER */}
+//         <div className="flex shrink-0 items-center justify-between border-b border-[#e5e8e7] px-5 py-4 sm:px-6">
+//           <div className="flex min-w-0 items-center gap-3">
+//             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#e8f5f3] text-[#004e47]">
+//               <Dumbbell size={21} />
+//             </div>
+
+//             <div className="min-w-0">
+//               <h2
+//                 id="add-activity-title"
+//                 className="text-lg font-bold text-[#191c1d] sm:text-xl"
+//               >
+//                 Add Activity
+//               </h2>
+
+//               <p className="text-sm text-[#6e7977]">
+//                 Log your exercise and activity.
+//               </p>
+//             </div>
+//           </div>
+
+//           <button
+//             type="button"
+//             onClick={onClose}
+//             disabled={isPending}
+//             aria-label="Close"
+//             className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full text-[#6e7977] transition-colors hover:bg-[#f2f4f3] hover:text-[#191c1d] disabled:cursor-not-allowed disabled:opacity-50"
+//           >
+//             <X size={21} />
+//           </button>
+//         </div>
+
+//         {/* FORM */}
+//         <form
+//           onSubmit={handleSubmit}
+//           className="min-h-0 overflow-y-auto"
+//         >
+//           <div className="space-y-5 p-5 sm:p-6">
+
+//             {/* ACTIVITY TYPE */}
+//             <div>
+//               <label
+//                 htmlFor="activity_type"
+//                 className="mb-2 block text-sm font-semibold text-[#191c1d]"
+//               >
+//                 Activity Type
+//               </label>
+
+//               <select
+//                 id="activity_type"
+//                 name="activity_type"
+//                 defaultValue="other"
+//                 disabled={isPending}
+//                 className="h-12 w-full cursor-pointer rounded-xl border border-[#bec9c6] bg-white px-4 text-base text-[#191c1d] outline-none transition-colors focus:border-[#004e47] disabled:bg-[#f5f6f6]"
+//               >
+//                 <option value="walking">
+//                   Walking
+//                 </option>
+
+//                 <option value="running">
+//                   Running
+//                 </option>
+
+//                 <option value="cycling">
+//                   Cycling
+//                 </option>
+
+//                 <option value="gym">
+//                   Gym / Strength Training
+//                 </option>
+
+//                 <option value="cardio">
+//                   Cardio
+//                 </option>
+
+//                 <option value="swimming">
+//                   Swimming
+//                 </option>
+
+//                 <option value="sports">
+//                   Sports
+//                 </option>
+
+//                 <option value="yoga">
+//                   Yoga
+//                 </option>
+
+//                 <option value="other">
+//                   Other
+//                 </option>
+//               </select>
+//             </div>
+
+//             {/* ACTIVITY NAME */}
+//             <div>
+//               <label
+//                 htmlFor="activity_name"
+//                 className="mb-2 block text-sm font-semibold text-[#191c1d]"
+//               >
+//                 Activity Name
+//               </label>
+
+//               <input
+//                 id="activity_name"
+//                 name="activity_name"
+//                 type="text"
+//                 required
+//                 maxLength={150}
+//                 disabled={isPending}
+//                 placeholder="Morning Walk"
+//                 className="h-12 w-full rounded-xl border border-[#bec9c6] px-4 text-base text-[#191c1d] outline-none placeholder:text-[#9aa4a2] transition-colors focus:border-[#004e47] disabled:bg-[#f5f6f6]"
+//               />
+//             </div>
+
+//             {/* DURATION + CALORIES */}
+//             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+
+//               {/* DURATION */}
+//               <div>
+//                 <label
+//                   htmlFor="duration_minutes"
+//                   className="mb-2 block text-sm font-semibold text-[#191c1d]"
+//                 >
+//                   Duration
+//                 </label>
+
+//                 <div className="relative">
+//                   <input
+//                     id="duration_minutes"
+//                     type="number"
+//                     name="duration_minutes"
+//                     required
+//                     min="1"
+//                     step="1"
+//                     defaultValue="30"
+//                     disabled={isPending}
+//                     className="h-12 w-full rounded-xl border border-[#bec9c6] px-4 pr-16 text-base text-[#191c1d] outline-none transition-colors focus:border-[#004e47] disabled:bg-[#f5f6f6]"
+//                   />
+
+//                   <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-[#6e7977]">
+//                     min
+//                   </span>
+//                 </div>
+//               </div>
+
+//               {/* CALORIES */}
+//               <div>
+//                 <label
+//                   htmlFor="calories_burned"
+//                   className="mb-2 block text-sm font-semibold text-[#191c1d]"
+//                 >
+//                   Calories Burned
+//                 </label>
+
+//                 <div className="relative">
+//                   <input
+//                     id="calories_burned"
+//                     type="number"
+//                     name="calories_burned"
+//                     min="0"
+//                     step="1"
+//                     defaultValue="0"
+//                     disabled={isPending}
+//                     className="h-12 w-full rounded-xl border border-[#bec9c6] px-4 pr-16 text-base text-[#191c1d] outline-none transition-colors focus:border-[#004e47] disabled:bg-[#f5f6f6]"
+//                   />
+
+//                   <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-[#6e7977]">
+//                     kcal
+//                   </span>
+//                 </div>
+//               </div>
+//             </div>
+
+//             {/* NOTE */}
+//             <div>
+//               <label
+//                 htmlFor="activity_note"
+//                 className="mb-2 block text-sm font-semibold text-[#191c1d]"
+//               >
+//                 Note
+
+//                 <span className="ml-1 font-normal text-[#8a9492]">
+//                   (Optional)
+//                 </span>
+//               </label>
+
+//               <textarea
+//                 id="activity_note"
+//                 name="note"
+//                 rows={3}
+//                 maxLength={500}
+//                 disabled={isPending}
+//                 placeholder="Any additional details..."
+//                 className="w-full resize-none rounded-xl border border-[#bec9c6] px-4 py-3 text-base text-[#191c1d] outline-none placeholder:text-[#9aa4a2] transition-colors focus:border-[#004e47] disabled:bg-[#f5f6f6]"
+//               />
+//             </div>
+
+//             {/* ERROR */}
+//             {error && (
+//               <div
+//                 role="alert"
+//                 className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600"
+//               >
+//                 {error}
+//               </div>
+//             )}
+//           </div>
+
+//           {/* FOOTER */}
+//           <div className="flex shrink-0 flex-col-reverse gap-3 border-t border-[#e5e8e7] bg-white p-4 sm:flex-row sm:justify-end sm:px-6">
+
+//             {/* CANCEL */}
+//             <button
+//               type="button"
+//               onClick={onClose}
+//               disabled={isPending}
+//               className="min-h-12 w-full cursor-pointer rounded-xl border border-[#bec9c6] px-5 text-sm font-semibold text-[#3e4947] transition-colors hover:bg-[#f5f7f6] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[120px]"
+//             >
+//               Cancel
+//             </button>
+
+//             {/* SUBMIT */}
+//             <button
+//               type="submit"
+//               disabled={isPending}
+//               className="inline-flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#004e47] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#00685f] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:min-w-[150px]"
+//             >
+//               {isPending ? (
+//                 <>
+//                   <Loader2
+//                     size={17}
+//                     className="animate-spin"
+//                   />
+
+//                   Adding...
+//                 </>
+//               ) : (
+//                 <>
+//                   <Check size={17} />
+
+//                   Add Activity
+//                 </>
+//               )}
+//             </button>
+//           </div>
+//         </form>
+//       </div>
+//     </div>
+//   );
+// }
+
 "use client";
 
 import {
-  useActionState,
   useEffect,
+  useState,
+  useTransition,
 } from "react";
 
 import {
@@ -12,43 +381,92 @@ import {
   X,
 } from "lucide-react";
 
+import { useRouter } from "next/navigation";
+
 import {
   addActivity,
-  type ActionState,
 } from "@/app/diary/actions";
 
 interface Props {
   open: boolean;
+  selectedDate: string;
   onClose: () => void;
 }
 
-const initialState: ActionState = {
-  success: false,
-  error: "",
-};
-
 export default function AddActivityModal({
   open,
+  selectedDate,
   onClose,
 }: Props) {
-  const [state, formAction, isPending] =
-    useActionState(
-      addActivity,
-      initialState
-    );
+  const router =
+    useRouter();
+
+  const [
+    isPending,
+    startTransition,
+  ] = useTransition();
+
+  const [
+    error,
+    setError,
+  ] = useState("");
 
   useEffect(() => {
-    if (state.success && open) {
-      onClose();
+    if (open) {
+      setError("");
     }
-  }, [
-    state.success,
-    open,
-    onClose,
-  ]);
+  }, [open]);
 
   if (!open) {
     return null;
+  }
+
+  function handleSubmit(
+    event: React.FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
+    if (isPending) {
+      return;
+    }
+
+    setError("");
+
+    const formData =
+      new FormData(
+        event.currentTarget
+      );
+
+    /*
+     * Explicitly set the selected
+     * diary date.
+     */
+    formData.set(
+      "activity_date",
+      selectedDate
+    );
+
+    startTransition(
+      async () => {
+        const result =
+          await addActivity(
+            formData
+          );
+
+        if (!result.success) {
+          setError(
+            result.error ||
+              "Unable to add activity."
+          );
+
+          return;
+        }
+
+        onClose();
+
+        router.refresh();
+      }
+    );
   }
 
   return (
@@ -56,13 +474,15 @@ export default function AddActivityModal({
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 p-4"
       onMouseDown={(event) => {
         if (
-          event.target === event.currentTarget &&
+          event.target ===
+            event.currentTarget &&
           !isPending
         ) {
           onClose();
         }
       }}
     >
+
       <div
         role="dialog"
         aria-modal="true"
@@ -73,14 +493,21 @@ export default function AddActivityModal({
             "calc(100dvh - 32px)",
         }}
       >
+
         {/* HEADER */}
+
         <div className="flex shrink-0 items-center justify-between border-b border-[#e5e8e7] px-5 py-4 sm:px-6">
+
           <div className="flex min-w-0 items-center gap-3">
+
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#e8f5f3] text-[#004e47]">
-              <Dumbbell size={21} />
+              <Dumbbell
+                size={21}
+              />
             </div>
 
             <div className="min-w-0">
+
               <h2
                 id="add-activity-title"
                 className="text-lg font-bold text-[#191c1d] sm:text-xl"
@@ -91,7 +518,9 @@ export default function AddActivityModal({
               <p className="text-sm text-[#6e7977]">
                 Log your exercise and activity.
               </p>
+
             </div>
+
           </div>
 
           <button
@@ -99,20 +528,53 @@ export default function AddActivityModal({
             onClick={onClose}
             disabled={isPending}
             aria-label="Close"
-            className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full text-[#6e7977] transition-colors hover:bg-[#f2f4f3] hover:text-[#191c1d] disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[#6e7977] hover:bg-[#f2f4f3] disabled:opacity-50"
           >
             <X size={21} />
           </button>
+
         </div>
 
         {/* FORM */}
+
         <form
-          action={formAction}
+          onSubmit={
+            handleSubmit
+          }
           className="min-h-0 overflow-y-auto"
         >
+
           <div className="space-y-5 p-5 sm:p-6">
+
+            {/* SELECTED DATE */}
+
+            <div className="rounded-xl border border-[#dce8e5] bg-[#eef9f7] px-4 py-3">
+
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#66726f]">
+                Adding activity to
+              </p>
+
+              <p className="mt-1 text-sm font-bold text-[#005049]">
+                {new Intl.DateTimeFormat(
+                  "en-IN",
+                  {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  }
+                ).format(
+                  new Date(
+                    `${selectedDate}T00:00:00`
+                  )
+                )}
+              </p>
+
+            </div>
+
             {/* ACTIVITY TYPE */}
+
             <div>
+
               <label
                 htmlFor="activity_type"
                 className="mb-2 block text-sm font-semibold text-[#191c1d]"
@@ -125,7 +587,7 @@ export default function AddActivityModal({
                 name="activity_type"
                 defaultValue="other"
                 disabled={isPending}
-                className="h-12 w-full cursor-pointer rounded-xl border border-[#bec9c6] bg-white px-4 text-base text-[#191c1d] outline-none transition-colors focus:border-[#004e47]"
+                className="h-12 w-full rounded-xl border border-[#bec9c6] bg-white px-4 text-base text-[#191c1d] outline-none focus:border-[#004e47]"
               >
                 <option value="walking">
                   Walking
@@ -163,10 +625,13 @@ export default function AddActivityModal({
                   Other
                 </option>
               </select>
+
             </div>
 
-            {/* ACTIVITY NAME */}
+            {/* NAME */}
+
             <div>
+
               <label
                 htmlFor="activity_name"
                 className="mb-2 block text-sm font-semibold text-[#191c1d]"
@@ -177,17 +642,22 @@ export default function AddActivityModal({
               <input
                 id="activity_name"
                 name="activity_name"
+                type="text"
                 required
                 maxLength={150}
                 disabled={isPending}
                 placeholder="Morning Walk"
-                className="h-12 w-full rounded-xl border border-[#bec9c6] px-4 text-base text-[#191c1d] outline-none placeholder:text-[#9aa4a2] transition-colors focus:border-[#004e47] disabled:bg-[#f5f6f6]"
+                className="h-12 w-full rounded-xl border border-[#bec9c6] px-4 text-base text-[#191c1d] outline-none placeholder:text-[#9aa4a2] focus:border-[#004e47]"
               />
+
             </div>
 
             {/* DURATION + CALORIES */}
+
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+
               <div>
+
                 <label
                   htmlFor="duration_minutes"
                   className="mb-2 block text-sm font-semibold text-[#191c1d]"
@@ -196,6 +666,7 @@ export default function AddActivityModal({
                 </label>
 
                 <div className="relative">
+
                   <input
                     id="duration_minutes"
                     type="number"
@@ -205,16 +676,19 @@ export default function AddActivityModal({
                     step="1"
                     defaultValue="30"
                     disabled={isPending}
-                    className="h-12 w-full rounded-xl border border-[#bec9c6] px-4 pr-16 text-base text-[#191c1d] outline-none transition-colors focus:border-[#004e47] disabled:bg-[#f5f6f6]"
+                    className="h-12 w-full rounded-xl border border-[#bec9c6] px-4 pr-16 text-base text-[#191c1d] outline-none focus:border-[#004e47]"
                   />
 
                   <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-[#6e7977]">
                     min
                   </span>
+
                 </div>
+
               </div>
 
               <div>
+
                 <label
                   htmlFor="calories_burned"
                   className="mb-2 block text-sm font-semibold text-[#191c1d]"
@@ -223,6 +697,7 @@ export default function AddActivityModal({
                 </label>
 
                 <div className="relative">
+
                   <input
                     id="calories_burned"
                     type="number"
@@ -231,23 +706,29 @@ export default function AddActivityModal({
                     step="1"
                     defaultValue="0"
                     disabled={isPending}
-                    className="h-12 w-full rounded-xl border border-[#bec9c6] px-4 pr-16 text-base text-[#191c1d] outline-none transition-colors focus:border-[#004e47] disabled:bg-[#f5f6f6]"
+                    className="h-12 w-full rounded-xl border border-[#bec9c6] px-4 pr-16 text-base text-[#191c1d] outline-none focus:border-[#004e47]"
                   />
 
                   <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-[#6e7977]">
                     kcal
                   </span>
+
                 </div>
+
               </div>
+
             </div>
 
             {/* NOTE */}
+
             <div>
+
               <label
                 htmlFor="activity_note"
                 className="mb-2 block text-sm font-semibold text-[#191c1d]"
               >
                 Note
+
                 <span className="ml-1 font-normal text-[#8a9492]">
                   (Optional)
                 </span>
@@ -260,28 +741,33 @@ export default function AddActivityModal({
                 maxLength={500}
                 disabled={isPending}
                 placeholder="Any additional details..."
-                className="w-full resize-none rounded-xl border border-[#bec9c6] px-4 py-3 text-base text-[#191c1d] outline-none placeholder:text-[#9aa4a2] transition-colors focus:border-[#004e47] disabled:bg-[#f5f6f6]"
+                className="w-full resize-none rounded-xl border border-[#bec9c6] px-4 py-3 text-base text-[#191c1d] outline-none placeholder:text-[#9aa4a2] focus:border-[#004e47]"
               />
+
             </div>
 
             {/* ERROR */}
-            {state.error && (
+
+            {error && (
               <div
                 role="alert"
                 className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600"
               >
-                {state.error}
+                {error}
               </div>
             )}
+
           </div>
 
           {/* FOOTER */}
+
           <div className="flex shrink-0 flex-col-reverse gap-3 border-t border-[#e5e8e7] bg-white p-4 sm:flex-row sm:justify-end sm:px-6">
+
             <button
               type="button"
               onClick={onClose}
               disabled={isPending}
-              className="min-h-12 w-full cursor-pointer rounded-xl border border-[#bec9c6] px-5 text-sm font-semibold text-[#3e4947] transition-colors hover:bg-[#f5f7f6] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[120px]"
+              className="min-h-12 w-full rounded-xl border border-[#bec9c6] px-5 text-sm font-semibold text-[#3e4947] hover:bg-[#f5f7f6] disabled:opacity-50 sm:w-auto sm:min-w-[120px]"
             >
               Cancel
             </button>
@@ -289,8 +775,9 @@ export default function AddActivityModal({
             <button
               type="submit"
               disabled={isPending}
-              className="inline-flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#004e47] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#00685f] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:min-w-[150px]"
+              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#004e47] px-5 text-sm font-semibold text-white hover:bg-[#00685f] disabled:opacity-60 sm:w-auto sm:min-w-[150px]"
             >
+
               {isPending ? (
                 <>
                   <Loader2
@@ -301,13 +788,19 @@ export default function AddActivityModal({
                 </>
               ) : (
                 <>
-                  <Check size={17} />
+                  <Check
+                    size={17}
+                  />
                   Add Activity
                 </>
               )}
+
             </button>
+
           </div>
+
         </form>
+
       </div>
     </div>
   );

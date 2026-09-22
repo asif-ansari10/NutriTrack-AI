@@ -20,12 +20,16 @@
 //   Restaurant,
 // } from "./CoachMessage";
 
+// /* -------------------------------------------------------------------------- */
+// /* Types                                                                      */
+// /* -------------------------------------------------------------------------- */
+
 // interface Message {
 //   id: string;
 
 //   role:
-//     | "user"
-//     | "assistant";
+//   | "user"
+//   | "assistant";
 
 //   content: string;
 
@@ -61,12 +65,25 @@
 //   };
 // }
 
+// interface LocationCoordinates {
+//   latitude: number;
+//   longitude: number;
+// }
+
+// /* -------------------------------------------------------------------------- */
+// /* Suggestions                                                                */
+// /* -------------------------------------------------------------------------- */
+
 // const suggestions = [
 //   "What should I eat for dinner?",
 //   "How much protein do I have left?",
 //   "How am I doing this month?",
 //   "Find a healthy restaurant near me",
 // ];
+
+// /* -------------------------------------------------------------------------- */
+// /* Page                                                                       */
+// /* -------------------------------------------------------------------------- */
 
 // export default function AICoachPage() {
 //   const [messages, setMessages] =
@@ -84,17 +101,16 @@
 //     );
 
 //   const [location, setLocation] =
-//     useState<{
-//       latitude: number;
-//       longitude: number;
-//     } | null>(null);
+//     useState<LocationCoordinates | null>(
+//       null
+//     );
 
 //   const messagesRef =
 //     useRef<HTMLDivElement>(null);
 
-//   /* ====================================================================== */
-//   /* LOAD CONTEXT                                                           */
-//   /* ====================================================================== */
+//   /* ======================================================================== */
+//   /* LOAD CONTEXT                                                             */
+//   /* ======================================================================== */
 
 //   useEffect(() => {
 //     async function loadContext() {
@@ -143,15 +159,16 @@
 //     ]);
 //   }, []);
 
-//   /* ====================================================================== */
-//   /* AUTO SCROLL                                                             */
-//   /* ====================================================================== */
+//   /* ======================================================================== */
+//   /* AUTO SCROLL                                                              */
+//   /* ======================================================================== */
 
 //   useEffect(() => {
 //     messagesRef.current?.scrollTo({
 //       top:
 //         messagesRef.current
 //           .scrollHeight,
+
 //       behavior: "smooth",
 //     });
 //   }, [
@@ -159,26 +176,29 @@
 //     loading,
 //   ]);
 
-//   /* ====================================================================== */
-//   /* LOCATION                                                                */
-//   /* ====================================================================== */
+//   /* ======================================================================== */
+//   /* LOCATION                                                                 */
+//   /* ======================================================================== */
 
-//   function getLocation(): Promise<{
-//     latitude: number;
-//     longitude: number;
-//   } | null> {
+//   function getLocation(): Promise<LocationCoordinates> {
 //     return new Promise(
-//       (resolve) => {
+//       (resolve, reject) => {
 //         if (
 //           !navigator.geolocation
 //         ) {
-//           resolve(null);
+//           reject(
+//             new Error(
+//               "Geolocation is not supported by this browser."
+//             )
+//           );
+
 //           return;
 //         }
 
 //         navigator.geolocation.getCurrentPosition(
 //           (position) => {
-//             const coords = {
+//             const coordinates: LocationCoordinates =
+//             {
 //               latitude:
 //                 position.coords
 //                   .latitude,
@@ -188,15 +208,64 @@
 //                   .longitude,
 //             };
 
-//             setLocation(
-//               coords
+//             console.log(
+//               "[NutriTrack Coach] Browser location:",
+//               coordinates
 //             );
 
-//             resolve(coords);
+//             /*
+//              * Save it for future restaurant searches.
+//              */
+//             setLocation(
+//               coordinates
+//             );
+
+//             /*
+//              * IMPORTANT:
+//              *
+//              * Return the coordinates immediately.
+//              *
+//              * React state updates are asynchronous, so we must NOT depend
+//              * on `location` immediately after calling setLocation().
+//              */
+//             resolve(
+//               coordinates
+//             );
 //           },
 
-//           () => {
-//             resolve(null);
+//           (error) => {
+//             console.error(
+//               "[NutriTrack Coach] Geolocation error:",
+//               error
+//             );
+
+//             let message =
+//               "Unable to get your location.";
+
+//             switch (error.code) {
+//               case error.PERMISSION_DENIED:
+//                 message =
+//                   "Location permission was denied. Please allow location access for NutriTrack and try again.";
+//                 break;
+
+//               case error.POSITION_UNAVAILABLE:
+//                 message =
+//                   "Your location is currently unavailable. Please try again.";
+//                 break;
+
+//               case error.TIMEOUT:
+//                 message =
+//                   "The location request timed out. Please try again.";
+//                 break;
+
+//               default:
+//                 message =
+//                   "Unable to get your location. Please try again.";
+//             }
+
+//             reject(
+//               new Error(message)
+//             );
 //           },
 
 //           {
@@ -213,9 +282,9 @@
 //     );
 //   }
 
-//   /* ====================================================================== */
-//   /* SEND MESSAGE                                                            */
-//   /* ====================================================================== */
+//   /* ======================================================================== */
+//   /* SEND MESSAGE                                                             */
+//   /* ======================================================================== */
 
 //   async function sendMessage(
 //     message?: string
@@ -230,6 +299,10 @@
 //     ) {
 //       return;
 //     }
+
+//     /* ---------------------------------------------------------------------- */
+//     /* Add user message immediately                                           */
+//     /* ---------------------------------------------------------------------- */
 
 //     const userMessage: Message = {
 //       id: crypto.randomUUID(),
@@ -248,21 +321,59 @@
 //     setLoading(true);
 
 //     try {
+//       /* -------------------------------------------------------------------- */
+//       /* Check whether this is a nearby restaurant request                    */
+//       /* -------------------------------------------------------------------- */
+
 //       const wantsRestaurant =
 //         isRestaurantQuestion(
 //           text
 //         );
 
-//       let currentLocation =
+//       /*
+//        * Start with already-known location.
+//        */
+//       let locationForRequest =
 //         location;
 
+//       /*
+//        * If restaurant search is requested and we don't have a location,
+//        * request it from the browser.
+//        */
 //       if (
 //         wantsRestaurant &&
-//         !currentLocation
+//         !locationForRequest
 //       ) {
-//         currentLocation =
-//           await getLocation();
+//         try {
+//           locationForRequest =
+//             await getLocation();
+//         } catch (error) {
+//           console.error(
+//             "[NutriTrack Coach] Location request failed:",
+//             error
+//           );
+
+//           setMessages(
+//             (previous) => [
+//               ...previous,
+//               {
+//                 id: crypto.randomUUID(),
+//                 role: "assistant",
+//                 content:
+//                   error instanceof Error
+//                     ? error.message
+//                     : "I need your location to find nearby restaurants. Please allow location access and try again.",
+//               },
+//             ]
+//           );
+
+//           return;
+//         }
 //       }
+
+//       /* -------------------------------------------------------------------- */
+//       /* Send request                                                         */
+//       /* -------------------------------------------------------------------- */
 
 //       const response =
 //         await fetch(
@@ -279,7 +390,7 @@
 //               message: text,
 
 //               /*
-//                * Correct API field name.
+//                * Send recent conversation history.
 //                */
 //               conversation:
 //                 messages
@@ -295,14 +406,19 @@
 //                   ),
 
 //               /*
-//                * Correct location format.
+//                * IMPORTANT:
+//                *
+//                * Use locationForRequest rather than `location`.
+//                *
+//                * When getLocation() has just completed, React may not have
+//                * updated the location state yet.
 //                */
 //               latitude:
-//                 currentLocation
+//                 locationForRequest
 //                   ?.latitude,
 
 //               longitude:
-//                 currentLocation
+//                 locationForRequest
 //                   ?.longitude,
 //             }),
 //           }
@@ -311,44 +427,56 @@
 //       const result =
 //         await response.json();
 
+//       console.log(
+//         "[NutriTrack Coach] API response:",
+//         result
+//       );
+
 //       if (
 //         !response.ok ||
 //         !result.success
 //       ) {
 //         throw new Error(
 //           result.error ||
-//             "Unable to contact your AI Coach."
+//           "Unable to contact your AI Coach."
 //         );
 //       }
+
+//       /* -------------------------------------------------------------------- */
+//       /* Add assistant response                                               */
+//       /* -------------------------------------------------------------------- */
+
+//       const assistantMessage: Message =
+//       {
+//         id: crypto.randomUUID(),
+
+//         role: "assistant",
+
+//         content:
+//           result.reply ||
+//           result.answer ||
+//           "I couldn't generate a response.",
+
+//         /*
+//          * Restaurant results come directly from our backend.
+//          */
+//         restaurants:
+//           Array.isArray(
+//             result.restaurants
+//           )
+//             ? result.restaurants
+//             : [],
+//       };
 
 //       setMessages(
 //         (previous) => [
 //           ...previous,
-
-//           {
-//             id:
-//               crypto.randomUUID(),
-
-//             role:
-//               "assistant",
-
-//             /*
-//              * API now returns reply.
-//              */
-//             content:
-//               result.reply ||
-//               result.answer ||
-//               "I couldn't generate a response.",
-
-//             restaurants:
-//               result.restaurants ||
-//               [],
-//           },
+//           assistantMessage,
 //         ]
 //       );
 //     } catch (error) {
 //       console.error(
-//         "Coach request error:",
+//         "[NutriTrack Coach] Request error:",
 //         error
 //       );
 
@@ -357,15 +485,12 @@
 //           ...previous,
 
 //           {
-//             id:
-//               crypto.randomUUID(),
+//             id: crypto.randomUUID(),
 
-//             role:
-//               "assistant",
+//             role: "assistant",
 
 //             content:
-//               error instanceof
-//               Error
+//               error instanceof Error
 //                 ? error.message
 //                 : "Something went wrong. Please try again.",
 //           },
@@ -376,13 +501,23 @@
 //     }
 //   }
 
-//   /* ====================================================================== */
-//   /* UI                                                                      */
-//   /* ====================================================================== */
+//   /* ======================================================================== */
+//   /* UI                                                                       */
+//   /* ======================================================================== */
 
 //   return (
-//     <div className="flex min-h-[calc(100dvh-72px)] flex-col overflow-hidden bg-[#f8f9fa] xl:h-screen xl:flex-row">
-
+//     <div
+//       className="
+//     flex
+//     h-[calc(100dvh-72px)]
+//     min-h-0
+//     flex-col
+//     overflow-hidden
+//     bg-[#f8f9fa]
+//     xl:h-screen
+//     xl:flex-row
+//   "
+//     >
 //       {/* ================================================================== */}
 //       {/* SUMMARY                                                            */}
 //       {/* ================================================================== */}
@@ -462,55 +597,30 @@
 //       {/* ================================================================== */}
 
 //       <section className="flex min-h-0 flex-1 flex-col">
+//         {/* ================================================================= */}
+//         {/* HEADER                                                            */}
+//         {/* ================================================================= */}
 
-//         {/* HEADER */}
 
-//         <header className="flex h-16 shrink-0 items-center justify-between border-b border-[#e1e3e4] bg-white px-4 sm:px-6">
-
-//           <div className="flex items-center gap-3">
-
-//             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#00685f] text-white">
-//               <Brain size={21} />
-//             </div>
-
-//             <div>
-//               <h1 className="text-base font-semibold text-[#191c1d]">
-//                 NutriTrack Coach
-//               </h1>
-
-//               <p className="text-xs text-[#6e7977]">
-//                 Your personal nutrition assistant
-//               </p>
-//             </div>
-
-//           </div>
-
-//           <button
-//             type="button"
-//             onClick={getLocation}
-//             className="flex h-10 items-center gap-2 rounded-full px-3 text-sm font-medium text-[#00685f] hover:bg-[#e7f8f5]"
-//           >
-//             <MapPin size={17} />
-
-//             <span className="hidden sm:inline">
-//               {location
-//                 ? "Location ready"
-//                 : "Location"}
-//             </span>
-//           </button>
-
-//         </header>
-
-//         {/* ================================================================== */}
-//         {/* MESSAGES                                                           */}
-//         {/* ================================================================== */}
+//         {/* ================================================================= */}
+//         {/* MESSAGES                                                          */}
+//         {/* ================================================================= */}
 
 //         <div
 //           ref={messagesRef}
-//           className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 lg:px-8"
+//           className="
+//     min-h-0
+//     flex-1
+//     overflow-y-auto
+//     overscroll-contain
+//     px-4
+//     py-5
+//     pb-6
+//     sm:px-6
+//     lg:px-8
+//   "
 //         >
 //           <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
-
 //             {messages.map(
 //               (message) => (
 //                 <CoachMessage
@@ -530,10 +640,13 @@
 //               )
 //             )}
 
+//             {/* -------------------------------------------------------------- */}
+//             {/* Loading                                                         */}
+//             {/* -------------------------------------------------------------- */}
+
 //             {loading && (
 //               <div className="flex gap-3">
-
-//                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#00685f] text-white">
+//                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#00685f] text-white">
 //                   <Brain size={18} />
 //                 </div>
 
@@ -543,23 +656,34 @@
 //                     className="animate-spin text-[#00685f]"
 //                   />
 //                 </div>
-
 //               </div>
 //             )}
-
 //           </div>
 //         </div>
 
-//         {/* ================================================================== */}
-//         {/* INPUT                                                              */}
-//         {/* ================================================================== */}
+//         {/* ================================================================= */}
+//         {/* INPUT                                                             */}
+//         {/* ================================================================= */}
 
-//         <div className="shrink-0 border-t border-[#e1e3e4] bg-white px-3 pb-3 pt-2 sm:px-6 sm:pb-5">
-
+// <div
+//   className="
+//     shrink-0
+//     border-t
+//     border-[#e1e3e4]
+//     bg-white
+//     px-3
+//     pb-[calc(env(safe-area-inset-bottom)+12px)]
+//     pt-2
+//     sm:px-6
+//     sm:pb-5
+//   "
+// > 
 //           <div className="mx-auto max-w-4xl">
+//             {/* -------------------------------------------------------------- */}
+//             {/* Suggestions                                                    */}
+//             {/* -------------------------------------------------------------- */}
 
 //             <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
-
 //               {suggestions.map(
 //                 (suggestion) => (
 //                   <button
@@ -575,14 +699,17 @@
 //                         suggestion
 //                       )
 //                     }
-//                     className="shrink-0 rounded-full border border-[#e1e3e4] bg-[#f3f4f5] px-3 py-2 text-xs font-medium text-[#3e4947] hover:bg-[#e7e8e9] disabled:opacity-50 sm:text-sm"
+//                     className="shrink-0 rounded-full border border-[#e1e3e4] bg-[#f3f4f5] px-3 py-2 text-xs font-medium text-[#3e4947] transition-colors hover:bg-[#e7e8e9] disabled:opacity-50 sm:text-sm"
 //                   >
 //                     {suggestion}
 //                   </button>
 //                 )
 //               )}
-
 //             </div>
+
+//             {/* -------------------------------------------------------------- */}
+//             {/* Input                                                          */}
+//             {/* -------------------------------------------------------------- */}
 
 //             <CoachInput
 //               value={input}
@@ -601,11 +728,8 @@
 //               to personalize
 //               recommendations.
 //             </p>
-
 //           </div>
-
 //         </div>
-
 //       </section>
 //     </div>
 //   );
@@ -617,37 +741,52 @@
 
 // function isRestaurantQuestion(
 //   message: string
-// ) {
+// ): boolean {
 //   const text =
-//     message.toLowerCase();
+//     message.toLowerCase().trim();
 
-//   return [
-//     "restaurant",
-//     "restaurants",
-//     "healthy restaurant",
-//     "healthy food near",
-//     "food near me",
+//   /*
+//    * Only request browser location when the user is actually asking for
+//    * nearby/local places.
+//    *
+//    * This prevents questions such as:
+//    *
+//    * "Is restaurant food healthy?"
+//    *
+//    * from unnecessarily asking for location.
+//    */
+//   const patterns = [
 //     "restaurant near me",
 //     "restaurants near me",
-//     "near me",
 //     "nearby restaurant",
-//     "nearby food",
-//     "place to eat",
-//     "where can i eat",
+//     "nearby restaurants",
+//     "healthy restaurant near me",
+//     "healthy restaurants near me",
+//     "food near me",
+//     "healthy food near me",
+//     "eat near me",
+//     "place to eat near me",
 //     "cafe near me",
-//   ].some(
+//     "cafes near me",
+//     "restaurants nearby",
+//     "food nearby",
+//     "places to eat nearby",
+//     "find a restaurant",
+//     "find restaurants",
+//     "find food near",
+//   ];
+
+//   return patterns.some(
 //     (keyword) =>
 //       text.includes(keyword)
 //   );
 // }
-
 
 "use client";
 
 import {
   Brain,
   Loader2,
-  MapPin,
 } from "lucide-react";
 
 import {
@@ -664,26 +803,20 @@ import type {
   Restaurant,
 } from "./CoachMessage";
 
-/* -------------------------------------------------------------------------- */
-/* Types                                                                      */
-/* -------------------------------------------------------------------------- */
+/* ==========================================================================
+   TYPES
+========================================================================== */
 
 interface Message {
   id: string;
-
-  role:
-    | "user"
-    | "assistant";
-
+  role: "user" | "assistant";
   content: string;
-
   restaurants?: Restaurant[];
 }
 
 interface CoachContextResponse {
   profile: {
     full_name: string;
-
     daily_calorie_target: number;
     protein_target_g: number;
     carbs_target_g: number;
@@ -714,9 +847,9 @@ interface LocationCoordinates {
   longitude: number;
 }
 
-/* -------------------------------------------------------------------------- */
-/* Suggestions                                                                */
-/* -------------------------------------------------------------------------- */
+/* ==========================================================================
+   SUGGESTIONS
+========================================================================== */
 
 const suggestions = [
   "What should I eat for dinner?",
@@ -725,11 +858,15 @@ const suggestions = [
   "Find a healthy restaurant near me",
 ];
 
-/* -------------------------------------------------------------------------- */
-/* Page                                                                       */
-/* -------------------------------------------------------------------------- */
+/* ==========================================================================
+   PAGE
+========================================================================== */
 
 export default function AICoachPage() {
+  /* ------------------------------------------------------------------------
+     STATE
+  ------------------------------------------------------------------------ */
+
   const [messages, setMessages] =
     useState<Message[]>([]);
 
@@ -749,12 +886,16 @@ export default function AICoachPage() {
       null
     );
 
+  /* ------------------------------------------------------------------------
+     MESSAGE SCROLL REF
+  ------------------------------------------------------------------------ */
+
   const messagesRef =
     useRef<HTMLDivElement>(null);
 
-  /* ======================================================================== */
-  /* LOAD CONTEXT                                                             */
-  /* ======================================================================== */
+  /* ==========================================================================
+     LOAD COACH CONTEXT
+  ========================================================================== */
 
   useEffect(() => {
     async function loadContext() {
@@ -793,6 +934,9 @@ export default function AICoachPage() {
 
     loadContext();
 
+    /*
+     * Initial welcome message.
+     */
     setMessages([
       {
         id: "welcome",
@@ -803,16 +947,20 @@ export default function AICoachPage() {
     ]);
   }, []);
 
-  /* ======================================================================== */
-  /* AUTO SCROLL                                                              */
-  /* ======================================================================== */
+  /* ==========================================================================
+     AUTO SCROLL
+  ========================================================================== */
 
   useEffect(() => {
-    messagesRef.current?.scrollTo({
-      top:
-        messagesRef.current
-          .scrollHeight,
+    const container =
+      messagesRef.current;
 
+    if (!container) {
+      return;
+    }
+
+    container.scrollTo({
+      top: container.scrollHeight,
       behavior: "smooth",
     });
   }, [
@@ -820,9 +968,9 @@ export default function AICoachPage() {
     loading,
   ]);
 
-  /* ======================================================================== */
-  /* LOCATION                                                                 */
-  /* ======================================================================== */
+  /* ==========================================================================
+     GET BROWSER LOCATION
+  ========================================================================== */
 
   function getLocation(): Promise<LocationCoordinates> {
     return new Promise(
@@ -858,19 +1006,15 @@ export default function AICoachPage() {
             );
 
             /*
-             * Save it for future restaurant searches.
+             * Save for future restaurant searches.
              */
             setLocation(
               coordinates
             );
 
             /*
-             * IMPORTANT:
-             *
-             * Return the coordinates immediately.
-             *
-             * React state updates are asynchronous, so we must NOT depend
-             * on `location` immediately after calling setLocation().
+             * React state updates are asynchronous,
+             * so return coordinates immediately.
              */
             resolve(
               coordinates
@@ -886,7 +1030,9 @@ export default function AICoachPage() {
             let message =
               "Unable to get your location.";
 
-            switch (error.code) {
+            switch (
+              error.code
+            ) {
               case error.PERMISSION_DENIED:
                 message =
                   "Location permission was denied. Please allow location access for NutriTrack and try again.";
@@ -926,9 +1072,9 @@ export default function AICoachPage() {
     );
   }
 
-  /* ======================================================================== */
-  /* SEND MESSAGE                                                             */
-  /* ======================================================================== */
+  /* ==========================================================================
+     SEND MESSAGE
+  ========================================================================== */
 
   async function sendMessage(
     message?: string
@@ -944,9 +1090,9 @@ export default function AICoachPage() {
       return;
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* Add user message immediately                                           */
-    /* ---------------------------------------------------------------------- */
+    /* ------------------------------------------------------------------------
+       ADD USER MESSAGE IMMEDIATELY
+    ------------------------------------------------------------------------ */
 
     const userMessage: Message = {
       id: crypto.randomUUID(),
@@ -965,9 +1111,9 @@ export default function AICoachPage() {
     setLoading(true);
 
     try {
-      /* -------------------------------------------------------------------- */
-      /* Check whether this is a nearby restaurant request                    */
-      /* -------------------------------------------------------------------- */
+      /* ----------------------------------------------------------------------
+         RESTAURANT QUESTION
+      ---------------------------------------------------------------------- */
 
       const wantsRestaurant =
         isRestaurantQuestion(
@@ -975,14 +1121,14 @@ export default function AICoachPage() {
         );
 
       /*
-       * Start with already-known location.
+       * Use already-known location first.
        */
       let locationForRequest =
         location;
 
       /*
-       * If restaurant search is requested and we don't have a location,
-       * request it from the browser.
+       * Request browser location only when
+       * the user asks for nearby restaurants.
        */
       if (
         wantsRestaurant &&
@@ -1015,9 +1161,9 @@ export default function AICoachPage() {
         }
       }
 
-      /* -------------------------------------------------------------------- */
-      /* Send request                                                         */
-      /* -------------------------------------------------------------------- */
+      /* ----------------------------------------------------------------------
+         API REQUEST
+      ---------------------------------------------------------------------- */
 
       const response =
         await fetch(
@@ -1050,12 +1196,7 @@ export default function AICoachPage() {
                   ),
 
               /*
-               * IMPORTANT:
-               *
-               * Use locationForRequest rather than `location`.
-               *
-               * When getLocation() has just completed, React may not have
-               * updated the location state yet.
+               * Use locationForRequest directly.
                */
               latitude:
                 locationForRequest
@@ -1086,9 +1227,9 @@ export default function AICoachPage() {
         );
       }
 
-      /* -------------------------------------------------------------------- */
-      /* Add assistant response                                               */
-      /* -------------------------------------------------------------------- */
+      /* ----------------------------------------------------------------------
+         ASSISTANT RESPONSE
+      ---------------------------------------------------------------------- */
 
       const assistantMessage: Message =
         {
@@ -1102,7 +1243,8 @@ export default function AICoachPage() {
             "I couldn't generate a response.",
 
           /*
-           * Restaurant results come directly from our backend.
+           * Restaurant results come directly
+           * from the backend.
            */
           restaurants:
             Array.isArray(
@@ -1127,12 +1269,9 @@ export default function AICoachPage() {
       setMessages(
         (previous) => [
           ...previous,
-
           {
             id: crypto.randomUUID(),
-
             role: "assistant",
-
             content:
               error instanceof Error
                 ? error.message
@@ -1145,15 +1284,27 @@ export default function AICoachPage() {
     }
   }
 
-  /* ======================================================================== */
-  /* UI                                                                       */
-  /* ======================================================================== */
+  /* ==========================================================================
+     UI
+  ========================================================================== */
 
   return (
-    <div className="flex min-h-[calc(100dvh-72px)] flex-col overflow-hidden bg-[#f8f9fa] xl:h-screen xl:flex-row">
-      {/* ================================================================== */}
-      {/* SUMMARY                                                            */}
-      {/* ================================================================== */}
+    <div
+      className="
+        flex
+        h-[calc(100dvh-76px)]
+        min-h-0
+        flex-col
+        overflow-hidden
+        bg-[#f8f9fa]
+
+        xl:h-screen
+        xl:flex-row
+      "
+    >
+      {/* =====================================================================
+          SUMMARY
+      ===================================================================== */}
 
       {context && (
         <CoachSummary
@@ -1225,69 +1376,54 @@ export default function AICoachPage() {
         />
       )}
 
-      {/* ================================================================== */}
-      {/* CHAT                                                               */}
-      {/* ================================================================== */}
+      {/* =====================================================================
+          CHAT
+      ===================================================================== */}
 
-      <section className="flex min-h-0 flex-1 flex-col">
-        {/* ================================================================= */}
-        {/* HEADER                                                            */}
-        {/* ================================================================= */}
+      <section
+        className="
+          flex
+          min-h-0
+          flex-1
+          flex-col
+        "
+      >
+        {/* ===================================================================
+            MESSAGES
 
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-[#e1e3e4] bg-white px-4 sm:px-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#00685f] text-white">
-              <Brain size={21} />
-            </div>
-
-            <div>
-              <h1 className="text-base font-semibold text-[#191c1d]">
-                NutriTrack Coach
-              </h1>
-
-              <p className="text-xs text-[#6e7977]">
-                Your personal nutrition assistant
-              </p>
-            </div>
-          </div>
-
-          {/* ---------------------------------------------------------------- */}
-          {/* Location button                                                 */}
-          {/* ---------------------------------------------------------------- */}
-
-          <button
-            type="button"
-            onClick={async () => {
-              try {
-                await getLocation();
-              } catch (error) {
-                console.error(
-                  "Location error:",
-                  error
-                );
-              }
-            }}
-            className="flex h-10 items-center gap-2 rounded-full px-3 text-sm font-medium text-[#00685f] transition-colors hover:bg-[#e7f8f5]"
-          >
-            <MapPin size={17} />
-
-            <span className="hidden sm:inline">
-              {location
-                ? "Location ready"
-                : "Location"}
-            </span>
-          </button>
-        </header>
-
-        {/* ================================================================= */}
-        {/* MESSAGES                                                          */}
-        {/* ================================================================= */}
+            Only this area scrolls on mobile.
+        =================================================================== */}
 
         <div
           ref={messagesRef}
-          className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 lg:px-8"
+          className="
+            min-h-0
+            flex-1
+            overflow-y-auto
+            overscroll-contain
+
+            px-4
+            pt-5
+            pb-[190px]
+
+            sm:px-6
+            sm:pb-[190px]
+
+            lg:px-8
+
+            xl:pb-6
+          "
         >
-          <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
+          <div
+            className="
+              mx-auto
+              flex
+              w-full
+              max-w-4xl
+              flex-col
+              gap-5
+            "
+          >
             {messages.map(
               (message) => (
                 <CoachMessage
@@ -1307,20 +1443,45 @@ export default function AICoachPage() {
               )
             )}
 
-            {/* -------------------------------------------------------------- */}
-            {/* Loading                                                         */}
-            {/* -------------------------------------------------------------- */}
+            {/* ===============================================================
+                LOADING
+            =============================================================== */}
 
             {loading && (
               <div className="flex gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#00685f] text-white">
+                <div
+                  className="
+                    flex
+                    h-9
+                    w-9
+                    shrink-0
+                    items-center
+                    justify-center
+                    rounded-full
+                    bg-[#00685f]
+                    text-white
+                  "
+                >
                   <Brain size={18} />
                 </div>
 
-                <div className="rounded-2xl rounded-tl-sm border border-[#e1e3e4] bg-white px-4 py-3">
+                <div
+                  className="
+                    rounded-2xl
+                    rounded-tl-sm
+                    border
+                    border-[#e1e3e4]
+                    bg-white
+                    px-4
+                    py-3
+                  "
+                >
                   <Loader2
                     size={18}
-                    className="animate-spin text-[#00685f]"
+                    className="
+                      animate-spin
+                      text-[#00685f]
+                    "
                   />
                 </div>
               </div>
@@ -1328,17 +1489,68 @@ export default function AICoachPage() {
           </div>
         </div>
 
-        {/* ================================================================= */}
-        {/* INPUT                                                             */}
-        {/* ================================================================= */}
+        {/* ===================================================================
+            INPUT AREA
 
-        <div className="shrink-0 border-t border-[#e1e3e4] bg-white px-3 pb-3 pt-2 sm:px-6 sm:pb-5">
-          <div className="mx-auto max-w-4xl">
-            {/* -------------------------------------------------------------- */}
-            {/* Suggestions                                                    */}
-            {/* -------------------------------------------------------------- */}
+            MOBILE:
+            fixed above bottom navigation
 
-            <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
+            DESKTOP:
+            normal part of chat layout
+        =================================================================== */}
+
+        <div
+          className="
+            fixed
+            bottom-[76px]
+            left-0
+            right-0
+            z-40
+
+            border-t
+            border-[#e1e3e4]
+            bg-white
+
+            px-3
+            pb-2
+            pt-2
+
+            shadow-[0_-4px_16px_rgba(0,0,0,0.06)]
+
+            sm:bottom-20
+            sm:px-6
+            sm:pb-3
+
+            xl:static
+            xl:z-auto
+            xl:shrink-0
+            xl:border-t
+            xl:px-6
+            xl:pb-5
+            xl:shadow-none
+          "
+        >
+          <div
+            className="
+              mx-auto
+              max-w-4xl
+            "
+          >
+            {/* =============================================================
+                SUGGESTIONS
+            ============================================================= */}
+
+            <div
+              className="
+                mb-2
+                flex
+                gap-2
+                overflow-x-auto
+                overscroll-x-contain
+                pb-1
+                scrollbar-hide
+              "
+            >
               {suggestions.map(
                 (suggestion) => (
                   <button
@@ -1354,7 +1566,24 @@ export default function AICoachPage() {
                         suggestion
                       )
                     }
-                    className="shrink-0 rounded-full border border-[#e1e3e4] bg-[#f3f4f5] px-3 py-2 text-xs font-medium text-[#3e4947] transition-colors hover:bg-[#e7e8e9] disabled:opacity-50 sm:text-sm"
+                    className="
+                      shrink-0
+                      rounded-full
+                      border
+                      border-[#e1e3e4]
+                      bg-[#f3f4f5]
+                      px-3
+                      py-2
+                      text-xs
+                      font-medium
+                      text-[#3e4947]
+                      transition-colors
+                      hover:bg-[#e7e8e9]
+                      disabled:cursor-not-allowed
+                      disabled:opacity-50
+
+                      sm:text-sm
+                    "
                   >
                     {suggestion}
                   </button>
@@ -1362,9 +1591,9 @@ export default function AICoachPage() {
               )}
             </div>
 
-            {/* -------------------------------------------------------------- */}
-            {/* Input                                                          */}
-            {/* -------------------------------------------------------------- */}
+            {/* =============================================================
+                INPUT
+            ============================================================= */}
 
             <CoachInput
               value={input}
@@ -1377,7 +1606,23 @@ export default function AICoachPage() {
               }
             />
 
-            <p className="mt-2 text-center text-[10px] text-[#6e7977]">
+            {/* =============================================================
+                FOOTER NOTE
+
+                Hide on very small mobile screens to save space.
+            ============================================================= */}
+
+            <p
+              className="
+                mt-2
+                hidden
+                text-center
+                text-[10px]
+                text-[#6e7977]
+
+                sm:block
+              "
+            >
               NutriTrack Coach uses
               your NutriTrack records
               to personalize
@@ -1390,25 +1635,21 @@ export default function AICoachPage() {
   );
 }
 
-/* ========================================================================== */
-/* RESTAURANT QUESTION                                                        */
-/* ========================================================================== */
+/* ==========================================================================
+   RESTAURANT QUESTION
+========================================================================== */
 
 function isRestaurantQuestion(
   message: string
 ): boolean {
   const text =
-    message.toLowerCase().trim();
+    message
+      .toLowerCase()
+      .trim();
 
   /*
-   * Only request browser location when the user is actually asking for
-   * nearby/local places.
-   *
-   * This prevents questions such as:
-   *
-   * "Is restaurant food healthy?"
-   *
-   * from unnecessarily asking for location.
+   * Only request browser location
+   * for nearby/local places.
    */
   const patterns = [
     "restaurant near me",

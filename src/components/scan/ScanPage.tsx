@@ -1708,17 +1708,14 @@ export default function ScanPage() {
                   </label>
 
                   <textarea
-                    value={description}
-                    onChange={(event) =>
-                      setDescription(
-                        event.target
-                          .value
-                      )
-                    }
-                    rows={6}
-                    placeholder="Example: One plate of chicken biryani with two pieces of chicken and a small bowl of raita."
-                    className="w-full resize-none rounded-xl border border-[#cbd5d3] bg-white p-4 text-sm outline-none placeholder:text-[#899391] focus:border-[#004e47] focus:ring-2 focus:ring-[#004e47]/10"
-                  />
+  value={description}
+  onChange={(event) =>
+    setDescription(event.target.value)
+  }
+  rows={6}
+  placeholder="Example: One plate of chicken biryani with two pieces of chicken and a small bowl of raita."
+  className="w-full resize-none rounded-xl border border-[#cbd5d3] bg-white p-4 text-base outline-none placeholder:text-[#899391] focus:border-[#004e47] focus:ring-2 focus:ring-[#004e47]/10"
+/>
                 </div>
 
                 {/* ANALYZE */}
