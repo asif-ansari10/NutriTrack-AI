@@ -228,6 +228,8 @@
 //     );
 //   }
 // }
+
+
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -238,13 +240,42 @@ export async function GET(request: Request) {
   const next = url.searchParams.get("next");
 
   /*
-   * No OAuth code.
+   * -------------------------------------------------------
+   * Determine application origin
+   * -------------------------------------------------------
    */
+
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    url.origin;
+
+  const origin = siteUrl.replace(/\/$/, "");
+
+  console.log("=================================");
+  console.log("OAuth Callback");
+  console.log("Request URL:", url.toString());
+  console.log("Code exists:", Boolean(code));
+  console.log("Next:", next);
+  console.log("Origin:", origin);
+  console.log("=================================");
+
+  /*
+   * -------------------------------------------------------
+   * Missing code
+   * -------------------------------------------------------
+   */
+
   if (!code) {
+    console.error(
+      "OAuth callback: authorization code missing."
+    );
+
     return NextResponse.redirect(
       new URL(
-        "/login?error=Authentication%20code%20missing.",
-        url.origin
+        `/login?error=${encodeURIComponent(
+          "Authentication code missing."
+        )}`,
+        origin
       )
     );
   }
@@ -253,10 +284,16 @@ export async function GET(request: Request) {
     const supabase = await createClient();
 
     /*
-     * Exchange OAuth code for Supabase session.
+     * -----------------------------------------------------
+     * Exchange OAuth code for Supabase session
+     * -----------------------------------------------------
      */
-    const { error: exchangeError } =
-      await supabase.auth.exchangeCodeForSession(code);
+
+    const {
+      error: exchangeError,
+    } = await supabase.auth.exchangeCodeForSession(
+      code
+    );
 
     if (exchangeError) {
       console.error(
@@ -269,14 +306,17 @@ export async function GET(request: Request) {
           `/login?error=${encodeURIComponent(
             "Google authentication failed. Please try again."
           )}`,
-          url.origin
+          origin
         )
       );
     }
 
     /*
-     * Get authenticated user.
+     * -----------------------------------------------------
+     * Get authenticated user
+     * -----------------------------------------------------
      */
+
     const {
       data: { user },
       error: userError,
@@ -293,14 +333,22 @@ export async function GET(request: Request) {
           `/login?error=${encodeURIComponent(
             "Unable to authenticate your account."
           )}`,
-          url.origin
+          origin
         )
       );
     }
 
+    console.log(
+      "Authenticated Google user:",
+      user.id
+    );
+
     /*
-     * Get profile.
+     * -----------------------------------------------------
+     * Get profile
+     * -----------------------------------------------------
      */
+
     const {
       data: profile,
       error: profileError,
@@ -327,15 +375,17 @@ export async function GET(request: Request) {
           `/login?error=${encodeURIComponent(
             "Unable to load your profile."
           )}`,
-          url.origin
+          origin
         )
       );
     }
 
     /*
-     * Profile should already exist
-     * because of the database trigger.
+     * -----------------------------------------------------
+     * Profile missing
+     * -----------------------------------------------------
      */
+
     if (!profile) {
       console.error(
         "Profile not found for authenticated user:",
@@ -347,58 +397,80 @@ export async function GET(request: Request) {
           `/login?error=${encodeURIComponent(
             "Your account profile could not be created. Please contact support."
           )}`,
-          url.origin
+          origin
         )
       );
     }
 
     /*
-     * Only allow the explicit redirect needed
-     * for the password-reset flow.
-     *
-     * Do NOT allow Google OAuth to override
-     * the normal onboarding/admin/home routing.
+     * -----------------------------------------------------
+     * Password reset flow
+     * -----------------------------------------------------
      */
+
     if (next === "/update-password") {
       return NextResponse.redirect(
         new URL(
           "/update-password",
-          url.origin
+          origin
         )
       );
     }
 
     /*
-     * User has not completed onboarding.
+     * -----------------------------------------------------
+     * Onboarding incomplete
+     * -----------------------------------------------------
      */
-    if (profile.onboarding_completed !== true) {
+
+    if (
+      profile.onboarding_completed !== true
+    ) {
+      console.log(
+        "Redirecting user to onboarding."
+      );
+
       return NextResponse.redirect(
         new URL(
           "/onboarding",
-          url.origin
+          origin
         )
       );
     }
 
     /*
-     * Admin users.
+     * -----------------------------------------------------
+     * Admin
+     * -----------------------------------------------------
      */
+
     if (profile.role === "admin") {
+      console.log(
+        "Redirecting admin to /admin."
+      );
+
       return NextResponse.redirect(
         new URL(
           "/admin",
-          url.origin
+          origin
         )
       );
     }
 
     /*
-     * Normal authenticated users.
+     * -----------------------------------------------------
+     * Normal user
+     * -----------------------------------------------------
      */
+
+    console.log(
+      "Redirecting authenticated user to /home."
+    );
+
     return NextResponse.redirect(
       new URL(
         "/home",
-        url.origin
+        origin
       )
     );
   } catch (error) {
@@ -412,7 +484,7 @@ export async function GET(request: Request) {
         `/login?error=${encodeURIComponent(
           "Authentication failed. Please try again."
         )}`,
-        url.origin
+        origin
       )
     );
   }
