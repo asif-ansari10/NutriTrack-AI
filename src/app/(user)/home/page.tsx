@@ -1,12 +1,12 @@
-
 import HomeDashboard from "@/components/dashboard/HomeDashboard";
 import ProtectedAppShell from "@/components/navigation/ProtectedAppShell";
-import OrganizationSchema from "@/components/seo/OrganizationSchema";
+import { requireUser } from "@/lib/auth/requireUser";
 
-export default function Home() {
+export default async function HomePage() {
+  await requireUser();
+
   return (
     <ProtectedAppShell>
-      <OrganizationSchema />
       <HomeDashboard />
     </ProtectedAppShell>
   );

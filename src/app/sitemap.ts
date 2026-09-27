@@ -1,15 +1,18 @@
 import type { MetadataRoute } from "next";
 
+import { blogs } from "@/data/blogs";
+
 const BASE_URL = "https://www.nutritrackai.co.in";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  return [
+  const publicPages: MetadataRoute.Sitemap = [
     {
       url: BASE_URL,
       changeFrequency: "weekly",
       priority: 1,
     },
 
+    // Main product pages
     {
       url: `${BASE_URL}/features`,
       changeFrequency: "monthly",
@@ -29,53 +32,62 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
 
     {
-      url: `${BASE_URL}/protein-tracker`,
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
-
-    {
       url: `${BASE_URL}/nutrition-tracker`,
       changeFrequency: "monthly",
-      priority: 0.8,
+      priority: 0.9,
     },
 
     {
-      url: `${BASE_URL}/weight-loss`,
+      url: `${BASE_URL}/protein-tracker`,
       changeFrequency: "monthly",
-      priority: 0.8,
+      priority: 0.85,
     },
 
     {
       url: `${BASE_URL}/indian-food-calorie-tracker`,
       changeFrequency: "monthly",
-      priority: 0.8,
+      priority: 0.85,
+    },
+
+    {
+      url: `${BASE_URL}/weight-loss`,
+      changeFrequency: "monthly",
+      priority: 0.85,
     },
 
     {
       url: `${BASE_URL}/ai-coach`,
       changeFrequency: "monthly",
-      priority: 0.8,
+      priority: 0.85,
     },
 
+    // Content
     {
       url: `${BASE_URL}/blog`,
       changeFrequency: "weekly",
-      priority: 0.8,
+      priority: 0.9,
     },
 
+    {
+      url: `${BASE_URL}/faq`,
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+
+    {
+      url: `${BASE_URL}/support`,
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
+
+    // Company
     {
       url: `${BASE_URL}/about`,
       changeFrequency: "monthly",
-      priority: 0.5,
+      priority: 0.6,
     },
 
-    {
-      url: `${BASE_URL}/contact`,
-      changeFrequency: "monthly",
-      priority: 0.5,
-    },
-
+    // Legal
     {
       url: `${BASE_URL}/privacy`,
       changeFrequency: "yearly",
@@ -87,5 +99,24 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "yearly",
       priority: 0.3,
     },
+  ];
+
+  // -------------------------------------------------------
+  // Blog Articles
+  // -------------------------------------------------------
+
+  const blogPages: MetadataRoute.Sitemap = blogs.map((blog) => ({
+    url: `${BASE_URL}/blog/${blog.slug}`,
+
+    lastModified: new Date(blog.date),
+
+    changeFrequency: "monthly",
+
+    priority: 0.75,
+  }));
+
+  return [
+    ...publicPages,
+    ...blogPages,
   ];
 }

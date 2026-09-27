@@ -432,5 +432,5 @@ export async function completeOnboarding(
    * =========================================
    */
 
-  redirect("/");
+  redirect("/home");
 }

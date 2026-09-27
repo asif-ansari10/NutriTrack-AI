@@ -365,7 +365,7 @@ import {
 import {
   addMeal,
   type ActionState,
-} from "@/app/diary/actions";
+} from "@/app/(user)/diary/actions";
 
 interface Props {
   mealType: string;

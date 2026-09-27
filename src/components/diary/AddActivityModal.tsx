@@ -385,7 +385,7 @@ import { useRouter } from "next/navigation";
 
 import {
   addActivity,
-} from "@/app/diary/actions";
+} from "@/app/(user)/diary/actions";
 
 interface Props {
   open: boolean;

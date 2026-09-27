@@ -1,281 +1,243 @@
 // import { NextResponse } from "next/server";
+
 // import { createClient } from "@/lib/supabase/server";
 
-// export async function GET(request: Request) {
-//   const requestUrl = new URL(request.url);
+// export async function GET(
+//   request: Request
+// ) {
+//   const url =
+//     new URL(request.url);
 
-//   const code = requestUrl.searchParams.get("code");
+//   const code =
+//     url.searchParams.get("code");
 
-//   if (!code) {
-//     return NextResponse.redirect(
-//       new URL("/login?error=oauth_failed", requestUrl.origin)
-//     );
-//   }
-
-//   const supabase = await createClient();
-
-//   const { error } =
-//     await supabase.auth.exchangeCodeForSession(code);
-
-//   if (error) {
-//     return NextResponse.redirect(
-//       new URL(
-//         `/login?error=${encodeURIComponent(error.message)}`,
-//         requestUrl.origin
-//       )
-//     );
-//   }
-
-//   const {
-//     data: { user },
-//   } = await supabase.auth.getUser();
-
-//   if (!user) {
-//     return NextResponse.redirect(
-//       new URL("/login", requestUrl.origin)
-//     );
-//   }
-
-//   const { data: profile } = await supabase
-//     .from("profiles")
-//     .select("onboarding_completed")
-//     .eq("id", user.id)
-//     .maybeSingle();
-
-//   if (
-//     profile?.onboarding_completed === true
-//   ) {
-//     return NextResponse.redirect(
-//       new URL("/", requestUrl.origin)
-//     );
-//   }
-
-//   return NextResponse.redirect(
-//     new URL("/onboarding", requestUrl.origin)
-//   );
-// }
-
-// import { NextResponse } from "next/server";
-// import { createClient } from "@/lib/supabase/server";
-
-// export async function GET(request: Request) {
-//   const url = new URL(request.url);
-
-//   const code = url.searchParams.get("code");
+//   const next =
+//     url.searchParams.get("next");
 
 //   /*
-//    * Where should we go after authentication?
-//    *
-//    * Examples:
-//    *
-//    * /auth/callback?code=xxx
-//    * /auth/callback?code=xxx&next=/update-password
-//    */
-//   const next = url.searchParams.get("next");
-
-//   /*
-//    * No authorization code
+//    * No OAuth code.
 //    */
 //   if (!code) {
 //     return NextResponse.redirect(
 //       new URL(
-//         "/login?error=Authentication%20failed.",
+//         "/login?error=Authentication%20code%20missing.",
 //         url.origin
 //       )
 //     );
 //   }
 
-//   const supabase = await createClient();
+//   try {
+//     const supabase =
+//       await createClient();
 
-//   /*
-//    * Exchange code for Supabase session
-//    */
-//   const {
-//     error: exchangeError,
-//   } = await supabase.auth.exchangeCodeForSession(
-//     code
-//   );
-
-//   if (exchangeError) {
-//     console.error(
-//       "Auth callback exchange error:",
-//       exchangeError
-//     );
-
-//     return NextResponse.redirect(
-//       new URL(
-//         `/login?error=${encodeURIComponent(
-//           "Authentication link is invalid or has expired."
-//         )}`,
-//         url.origin
-//       )
-//     );
-//   }
-
-//   /*
-//    * Get authenticated user
-//    */
-//   const {
-//     data: { user },
-//     error: userError,
-//   } = await supabase.auth.getUser();
-
-//   if (userError || !user) {
-//     console.error(
-//       "Auth callback user error:",
-//       userError
-//     );
-
-//     return NextResponse.redirect(
-//       new URL(
-//         "/login?error=Unable%20to%20authenticate%20your%20account.",
-//         url.origin
-//       )
-//     );
-//   }
-
-//   /*
-//    * IMPORTANT:
-//    *
-//    * Password reset flow.
-//    *
-//    * If the callback contains:
-//    *
-//    * next=/update-password
-//    *
-//    * go directly there.
-//    *
-//    * DO THIS BEFORE PROFILE CHECK.
-//    */
-//   if (
-//     next &&
-//     next.startsWith("/") &&
-//     !next.startsWith("//")
-//   ) {
-//     return NextResponse.redirect(
-//       new URL(next, url.origin)
-//     );
-//   }
-
-//   /*
-//    * Normal authentication flow
-//    *
-//    * Check profile
-//    */
-//   const {
-//     data: profile,
-//     error: profileError,
-//   } = await supabase
-//     .from("profiles")
-//     .select(
-//       "id, full_name, avatar_url, onboarding_completed"
-//     )
-//     .eq("id", user.id)
-//     .maybeSingle();
-
-//   if (profileError) {
-//     console.error(
-//       "Profile fetch error:",
-//       profileError
-//     );
-
-//     return NextResponse.redirect(
-//       new URL(
-//         "/login?error=Unable%20to%20load%20your%20profile.",
-//         url.origin
-//       )
-//     );
-//   }
-
-//   /*
-//    * Profile doesn't exist
-//    */
-//   if (!profile) {
-//     const fullName =
-//       user.user_metadata?.full_name ||
-//       user.user_metadata?.name ||
-//       "";
-
-//     const avatarUrl =
-//       user.user_metadata?.avatar_url ||
-//       user.user_metadata?.picture ||
-//       null;
-
+//     /*
+//      * Exchange OAuth code
+//      * for Supabase session.
+//      */
 //     const {
-//       error: createProfileError,
-//     } = await supabase
-//       .from("profiles")
-//       .insert({
-//         id: user.id,
-//         full_name: fullName,
-//         avatar_url: avatarUrl,
-//         onboarding_completed: false,
-//       });
+//       error: exchangeError,
+//     } =
+//       await supabase.auth.exchangeCodeForSession(
+//         code
+//       );
 
-//     if (createProfileError) {
+//     if (exchangeError) {
 //       console.error(
-//         "Profile creation error:",
-//         createProfileError
+//         "OAuth code exchange error:",
+//         exchangeError
 //       );
 
 //       return NextResponse.redirect(
 //         new URL(
 //           `/login?error=${encodeURIComponent(
-//             "Unable to create your profile."
+//             "Google authentication failed. Please try again."
 //           )}`,
 //           url.origin
 //         )
 //       );
 //     }
 
+//     /*
+//      * Get authenticated user.
+//      */
+//     const {
+//       data: { user },
+//       error: userError,
+//     } =
+//       await supabase.auth.getUser();
+
+//     if (userError || !user) {
+//       console.error(
+//         "OAuth user error:",
+//         userError
+//       );
+
+//       return NextResponse.redirect(
+//         new URL(
+//           `/login?error=${encodeURIComponent(
+//             "Unable to authenticate your account."
+//           )}`,
+//           url.origin
+//         )
+//       );
+//     }
+
+//     /*
+//      * Password reset / explicit next route.
+//      *
+//      * Only allow internal routes.
+//      */
+//     if (
+//       next &&
+//       next.startsWith("/") &&
+//       !next.startsWith("//")
+//     ) {
+//       return NextResponse.redirect(
+//         new URL(
+//           next,
+//           url.origin
+//         )
+//       );
+//     }
+
+//     /*
+//      * Check profile.
+//      */
+//     const {
+//       data: profile,
+//       error: profileError,
+//     } =
+//       await supabase
+//         .from("profiles")
+//         .select(
+//           "id, full_name, avatar_url, onboarding_completed"
+//         )
+//         .eq("id", user.id)
+//         .maybeSingle();
+
+//     if (profileError) {
+//       console.error(
+//         "Profile fetch error:",
+//         profileError
+//       );
+
+//       return NextResponse.redirect(
+//         new URL(
+//           `/login?error=${encodeURIComponent(
+//             "Unable to load your profile."
+//           )}`,
+//           url.origin
+//         )
+//       );
+//     }
+
+//     /*
+//      * No profile.
+//      *
+//      * This normally happens for a new
+//      * Google user.
+//      */
+//     if (!profile) {
+//       const fullName =
+//         user.user_metadata?.full_name ||
+//         user.user_metadata?.name ||
+//         "";
+
+//       const avatarUrl =
+//         user.user_metadata?.avatar_url ||
+//         user.user_metadata?.picture ||
+//         null;
+
+//       const {
+//         error: profileCreateError,
+//       } =
+//         await supabase
+//           .from("profiles")
+//           .insert({
+//             id: user.id,
+//             full_name: fullName,
+//             avatar_url: avatarUrl,
+//             onboarding_completed: false,
+//           });
+
+//       if (profileCreateError) {
+//         console.error(
+//           "Profile creation error:",
+//           profileCreateError
+//         );
+
+//         return NextResponse.redirect(
+//           new URL(
+//             `/login?error=${encodeURIComponent(
+//               "Unable to create your profile."
+//             )}`,
+//             url.origin
+//           )
+//         );
+//       }
+
+//       /*
+//        * New Google user.
+//        * Send them to onboarding.
+//        */
+//       return NextResponse.redirect(
+//         new URL(
+//           "/onboarding",
+//           url.origin
+//         )
+//       );
+//     }
+
+//     /*
+//      * Existing user who has not completed
+//      * onboarding.
+//      */
+//     if (
+//       profile.onboarding_completed !== true
+//     ) {
+//       return NextResponse.redirect(
+//         new URL(
+//           "/onboarding",
+//           url.origin
+//         )
+//       );
+//     }
+
+//     /*
+//      * Existing fully configured user.
+//      */
 //     return NextResponse.redirect(
 //       new URL(
-//         "/onboarding",
+//         "/",
+//         url.origin
+//       )
+//     );
+//   } catch (error) {
+//     console.error(
+//       "OAuth callback exception:",
+//       error
+//     );
+
+//     return NextResponse.redirect(
+//       new URL(
+//         `/login?error=${encodeURIComponent(
+//           "Authentication failed. Please try again."
+//         )}`,
 //         url.origin
 //       )
 //     );
 //   }
-
-//   /*
-//    * Onboarding incomplete
-//    */
-//   if (
-//     profile.onboarding_completed !== true
-//   ) {
-//     return NextResponse.redirect(
-//       new URL(
-//         "/onboarding",
-//         url.origin
-//       )
-//     );
-//   }
-
-//   /*
-//    * Fully authenticated user
-//    */
-//   return NextResponse.redirect(
-//     new URL(
-//       "/",
-//       url.origin
-//     )
-//   );
 // }
 
 import { NextResponse } from "next/server";
 
 import { createClient } from "@/lib/supabase/server";
 
-export async function GET(
-  request: Request
-) {
-  const url =
-    new URL(request.url);
+export async function GET(request: Request) {
+  const url = new URL(request.url);
 
-  const code =
-    url.searchParams.get("code");
-
-  const next =
-    url.searchParams.get("next");
+  const code = url.searchParams.get("code");
+  const next = url.searchParams.get("next");
 
   /*
    * No OAuth code.
@@ -290,19 +252,13 @@ export async function GET(
   }
 
   try {
-    const supabase =
-      await createClient();
+    const supabase = await createClient();
 
     /*
-     * Exchange OAuth code
-     * for Supabase session.
+     * Exchange OAuth code for Supabase session.
      */
-    const {
-      error: exchangeError,
-    } =
-      await supabase.auth.exchangeCodeForSession(
-        code
-      );
+    const { error: exchangeError } =
+      await supabase.auth.exchangeCodeForSession(code);
 
     if (exchangeError) {
       console.error(
@@ -326,8 +282,7 @@ export async function GET(
     const {
       data: { user },
       error: userError,
-    } =
-      await supabase.auth.getUser();
+    } = await supabase.auth.getUser();
 
     if (userError || !user) {
       console.error(
@@ -346,37 +301,25 @@ export async function GET(
     }
 
     /*
-     * Password reset / explicit next route.
-     *
-     * Only allow internal routes.
-     */
-    if (
-      next &&
-      next.startsWith("/") &&
-      !next.startsWith("//")
-    ) {
-      return NextResponse.redirect(
-        new URL(
-          next,
-          url.origin
-        )
-      );
-    }
-
-    /*
      * Check profile.
+     *
+     * The database trigger should have already
+     * created the profile for a new user.
      */
     const {
       data: profile,
       error: profileError,
-    } =
-      await supabase
-        .from("profiles")
-        .select(
-          "id, full_name, avatar_url, onboarding_completed"
-        )
-        .eq("id", user.id)
-        .maybeSingle();
+    } = await supabase
+      .from("profiles")
+      .select(`
+        id,
+        full_name,
+        avatar_url,
+        onboarding_completed,
+        role
+      `)
+      .eq("id", user.id)
+      .maybeSingle();
 
     if (profileError) {
       console.error(
@@ -395,69 +338,44 @@ export async function GET(
     }
 
     /*
-     * No profile.
-     *
-     * This normally happens for a new
-     * Google user.
+     * If there is no profile, something is wrong
+     * with the profile creation trigger.
      */
     if (!profile) {
-      const fullName =
-        user.user_metadata?.full_name ||
-        user.user_metadata?.name ||
-        "";
+      console.error(
+        "Profile not found for authenticated user:",
+        user.id
+      );
 
-      const avatarUrl =
-        user.user_metadata?.avatar_url ||
-        user.user_metadata?.picture ||
-        null;
-
-      const {
-        error: profileCreateError,
-      } =
-        await supabase
-          .from("profiles")
-          .insert({
-            id: user.id,
-            full_name: fullName,
-            avatar_url: avatarUrl,
-            onboarding_completed: false,
-          });
-
-      if (profileCreateError) {
-        console.error(
-          "Profile creation error:",
-          profileCreateError
-        );
-
-        return NextResponse.redirect(
-          new URL(
-            `/login?error=${encodeURIComponent(
-              "Unable to create your profile."
-            )}`,
-            url.origin
-          )
-        );
-      }
-
-      /*
-       * New Google user.
-       * Send them to onboarding.
-       */
       return NextResponse.redirect(
         new URL(
-          "/onboarding",
+          `/login?error=${encodeURIComponent(
+            "Your account profile could not be created. Please contact support."
+          )}`,
           url.origin
         )
       );
     }
 
     /*
-     * Existing user who has not completed
-     * onboarding.
+     * Explicit internal redirect.
+     *
+     * Useful for flows such as password reset.
      */
     if (
-      profile.onboarding_completed !== true
+      next &&
+      next.startsWith("/") &&
+      !next.startsWith("//")
     ) {
+      return NextResponse.redirect(
+        new URL(next, url.origin)
+      );
+    }
+
+    /*
+     * User has not completed onboarding.
+     */
+    if (profile.onboarding_completed !== true) {
       return NextResponse.redirect(
         new URL(
           "/onboarding",
@@ -467,11 +385,23 @@ export async function GET(
     }
 
     /*
-     * Existing fully configured user.
+     * Existing authenticated user.
+     *
+     * Admin will eventually go to /admin.
+     * Normal users go to /home.
      */
+    if (profile.role === "admin") {
+      return NextResponse.redirect(
+        new URL(
+          "/admin",
+          url.origin
+        )
+      );
+    }
+
     return NextResponse.redirect(
       new URL(
-        "/",
+        "/home",
         url.origin
       )
     );

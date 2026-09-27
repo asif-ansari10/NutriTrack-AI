@@ -9,7 +9,7 @@ import type {
 
 import {
   deleteMeal,
-} from "@/app/diary/actions";
+} from "@/app/(user)/diary/actions";
 
 import DeleteMealModal from "./DeleteMealModal";
 

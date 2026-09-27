@@ -12,7 +12,7 @@ import type {
 
 import {
   deleteActivity,
-} from "@/app/diary/actions";
+} from "@/app/(user)/diary/actions";
 
 interface ActivityCardProps {
   activity: DiaryActivity;

@@ -29,7 +29,7 @@ import DeleteConfirmModal from "./DeleteConfirmModal";
 import {
   deleteMeal,
   deleteActivity,
-} from "@/app/diary/actions";
+} from "@/app/(user)/diary/actions";
 
 import type {
   DiaryData,

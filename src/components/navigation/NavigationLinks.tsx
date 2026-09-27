@@ -30,7 +30,7 @@ import {
 const navItems = [
   {
     label: "Home",
-    href: "/",
+    href: "/home",
     icon: Home,
   },
   {
@@ -68,8 +68,8 @@ function isActiveRoute(
   pathname: string,
   href: string
 ) {
-  if (href === "/") {
-    return pathname === "/";
+  if (href === "/home") {
+    return pathname === "/home";
   }
 
   return (
@@ -129,12 +129,12 @@ export function DesktopNavigation({
     /*
      * Home uses a complete browser refresh.
      */
-    if (href === "/") {
+    if (href === "/home") {
       event.preventDefault();
 
-      setLoadingHref("/");
+      setLoadingHref("/home");
 
-      window.location.href = "/";
+      window.location.href = "/home";
 
       return;
     }
@@ -293,7 +293,7 @@ export function MobileNavigation({
   const mobileItems = [
     {
       label: "Home",
-      href: "/",
+      href: "/home",
       icon: Home,
     },
 
@@ -360,12 +360,12 @@ export function MobileNavigation({
     /*
      * Home = full refresh.
      */
-    if (href === "/") {
+    if (href === "/home") {
       event.preventDefault();
 
-      setLoadingHref("/");
+      setLoadingHref("/home");
 
-      window.location.href = "/";
+      window.location.href = "/home";
 
       return;
     }
