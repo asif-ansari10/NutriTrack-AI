@@ -228,9 +228,7 @@
 //     );
 //   }
 // }
-
 import { NextResponse } from "next/server";
-
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
@@ -301,10 +299,7 @@ export async function GET(request: Request) {
     }
 
     /*
-     * Check profile.
-     *
-     * The database trigger should have already
-     * created the profile for a new user.
+     * Get profile.
      */
     const {
       data: profile,
@@ -338,8 +333,8 @@ export async function GET(request: Request) {
     }
 
     /*
-     * If there is no profile, something is wrong
-     * with the profile creation trigger.
+     * Profile should already exist
+     * because of the database trigger.
      */
     if (!profile) {
       console.error(
@@ -358,17 +353,18 @@ export async function GET(request: Request) {
     }
 
     /*
-     * Explicit internal redirect.
+     * Only allow the explicit redirect needed
+     * for the password-reset flow.
      *
-     * Useful for flows such as password reset.
+     * Do NOT allow Google OAuth to override
+     * the normal onboarding/admin/home routing.
      */
-    if (
-      next &&
-      next.startsWith("/") &&
-      !next.startsWith("//")
-    ) {
+    if (next === "/update-password") {
       return NextResponse.redirect(
-        new URL(next, url.origin)
+        new URL(
+          "/update-password",
+          url.origin
+        )
       );
     }
 
@@ -385,10 +381,7 @@ export async function GET(request: Request) {
     }
 
     /*
-     * Existing authenticated user.
-     *
-     * Admin will eventually go to /admin.
-     * Normal users go to /home.
+     * Admin users.
      */
     if (profile.role === "admin") {
       return NextResponse.redirect(
@@ -399,6 +392,9 @@ export async function GET(request: Request) {
       );
     }
 
+    /*
+     * Normal authenticated users.
+     */
     return NextResponse.redirect(
       new URL(
         "/home",
