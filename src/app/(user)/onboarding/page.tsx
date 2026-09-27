@@ -7,6 +7,7 @@ import {
   Check,
 } from "lucide-react";
 import { completeOnboarding } from "./actions";
+import { requireUser } from "@/lib/auth/requireUser";
 
 type Goal = "lose" | "maintain" | "gain";
 
@@ -119,7 +120,8 @@ const activities = [
   },
 ];
 
-export default function OnboardingPage() {
+export default async function OnboardingPage() {
+  await requireUser();
   const router = useRouter();
 
   const [step, setStep] = useState(1);

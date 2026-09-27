@@ -3,8 +3,10 @@ import MobileNav from "@/components/navigation/MobileNav";
 import MobileHeader from "@/components/navigation/MobileHeader";
 import ScanPage from "@/components/scan/ScanPage";
 import AuthGate from "@/components/auth/AuthGate";
+import { requireUser } from "@/lib/auth/requireUser";
 
-export default function ScanRoute() {
+export default async function ScanRoute() {
+    await requireUser();
   return (
     <AuthGate>
       <div className="min-h-screen bg-[#f8f9fa] text-[#191c1d]">

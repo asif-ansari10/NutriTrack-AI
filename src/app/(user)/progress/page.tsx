@@ -2,6 +2,7 @@ import ProgressPage from "@/components/progress/ProgressPage";
 import ProtectedAppShell from "@/components/navigation/ProtectedAppShell";
 import { createClient } from "@/lib/supabase/server";
 import { getProgressData } from "@/lib/progress/getProgressData";
+import { requireUser } from "@/lib/auth/requireUser";
 
 interface PageProps {
   searchParams: Promise<{
@@ -35,7 +36,7 @@ export default async function ProgressRoute({
   // =========================================================
   // NOT LOGGED IN
   // =========================================================
-
+await requireUser();
   if (!user) {
     return (
       <ProtectedAppShell>
