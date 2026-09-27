@@ -120,8 +120,7 @@ const activities = [
   },
 ];
 
-export default async function OnboardingPage() {
-  await requireUser();
+export default function OnboardingPage() {
   const router = useRouter();
 
   const [step, setStep] = useState(1);

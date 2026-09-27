@@ -1,8 +1,6 @@
 import ProtectedAppShell from "@/components/navigation/ProtectedAppShell";
 import DiaryPage from "@/components/diary/DiaryPage";
-import {
-  getDiaryData,
-} from "@/lib/diary/getDiaryData";
+import { getDiaryData } from "@/lib/diary/getDiaryData";
 import { requireUser } from "@/lib/auth/requireUser";
 
 interface PageProps {
@@ -24,12 +22,18 @@ function isValidDate(value: string): boolean {
 export default async function DiaryRoute({
   searchParams,
 }: PageProps) {
+  /*
+   * Authenticate FIRST.
+   * If the user is not logged in,
+   * requireUser() redirects to /login.
+   */
+  const user = await requireUser();
+
   const params = await searchParams;
 
   const today = getTodayIndia();
 
-  const requestedDate =
-    params.date || today;
+  const requestedDate = params.date || today;
 
   /*
    * Only accept a valid date.
@@ -41,11 +45,10 @@ export default async function DiaryRoute({
       : today;
 
   /*
-   * Load diary data for the selected date.
+   * Load diary data only after authentication.
    */
-  const data =
-    await getDiaryData(selectedDate);
-await requireUser();
+  const data = await getDiaryData(selectedDate);
+
   return (
     <ProtectedAppShell>
       <DiaryPage
