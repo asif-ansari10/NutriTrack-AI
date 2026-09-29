@@ -5,14 +5,25 @@ import { blogs } from "@/data/blogs";
 const BASE_URL = "https://www.nutritrackai.co.in";
 
 export default function sitemap(): MetadataRoute.Sitemap {
+  // =====================================================
+  // PUBLIC PAGES
+  // =====================================================
+
   const publicPages: MetadataRoute.Sitemap = [
+    // ===================================================
+    // HOME
+    // ===================================================
+
     {
       url: BASE_URL,
       changeFrequency: "weekly",
       priority: 1,
     },
 
-    // Main product pages
+    // ===================================================
+    // MAIN PRODUCT PAGES
+    // ===================================================
+
     {
       url: `${BASE_URL}/features`,
       changeFrequency: "monthly",
@@ -61,7 +72,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.85,
     },
 
-    // Content
+    // ===================================================
+    // CONTENT
+    // ===================================================
+
     {
       url: `${BASE_URL}/blog`,
       changeFrequency: "weekly",
@@ -80,14 +94,20 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.6,
     },
 
-    // Company
+    // ===================================================
+    // COMPANY
+    // ===================================================
+
     {
       url: `${BASE_URL}/about`,
       changeFrequency: "monthly",
       priority: 0.6,
     },
 
-    // Legal
+    // ===================================================
+    // LEGAL
+    // ===================================================
+
     {
       url: `${BASE_URL}/privacy`,
       changeFrequency: "yearly",
@@ -101,19 +121,29 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
   ];
 
-  // -------------------------------------------------------
-  // Blog Articles
-  // -------------------------------------------------------
+  // =====================================================
+  // BLOG ARTICLES
+  // =====================================================
 
   const blogPages: MetadataRoute.Sitemap = blogs.map((blog) => ({
     url: `${BASE_URL}/blog/${blog.slug}`,
 
-    lastModified: new Date(blog.date),
+    // blogs.ts uses ISO dates:
+    // "2026-09-20"
+    // "2026-09-17"
+    // "2026-09-14"
+    //
+    // Keep the ISO date for sitemap lastModified.
+    lastModified: blog.date,
 
     changeFrequency: "monthly",
 
     priority: 0.75,
   }));
+
+  // =====================================================
+  // FINAL SITEMAP
+  // =====================================================
 
   return [
     ...publicPages,
