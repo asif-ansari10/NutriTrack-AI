@@ -36,9 +36,6 @@ export default function robots(): MetadataRoute.Robots {
           // API
           "/api/",
           "/api",
-
-          // Next.js internals
-          "/_next/",
         ],
       },
 
@@ -48,6 +45,7 @@ export default function robots(): MetadataRoute.Robots {
         allow: "/",
 
         disallow: [
+          // Private user application
           "/home",
           "/diary",
           "/progress",
@@ -55,14 +53,24 @@ export default function robots(): MetadataRoute.Robots {
           "/scan",
           "/coach",
           "/onboarding",
+
+          // Authentication pages
           "/login",
           "/signup",
           "/forgot-password",
           "/update-password",
+
+          // Authentication callbacks
           "/auth/",
+          "/auth",
+
+          // Admin
           "/admin",
+          "/admin/",
+
+          // API
           "/api/",
-          "/_next/",
+          "/api",
         ],
       },
 
@@ -72,6 +80,7 @@ export default function robots(): MetadataRoute.Robots {
         allow: "/",
 
         disallow: [
+          // Private user application
           "/home",
           "/diary",
           "/progress",
@@ -79,14 +88,24 @@ export default function robots(): MetadataRoute.Robots {
           "/scan",
           "/coach",
           "/onboarding",
+
+          // Authentication pages
           "/login",
           "/signup",
           "/forgot-password",
           "/update-password",
+
+          // Authentication callbacks
           "/auth/",
+          "/auth",
+
+          // Admin
           "/admin",
+          "/admin/",
+
+          // API
           "/api/",
-          "/_next/",
+          "/api",
         ],
       },
     ],
